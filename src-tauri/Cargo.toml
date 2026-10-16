@@ -1,0 +1,16 @@
+[package]
+name = "zhivault"
+version = "0.1.0"
+description = "知藏 ZhiVault —— 把知乎装进自己口袋（作者：橙茶星）"
+authors = ["橙茶星"]
+edition = "2024"
+rust-version = "1.90"
+
+[build-dependencies]
+tauri-build = { version = "2.7.3", features = [] }
+
+[dependencies]
+serde = { version = "1.0", features = ["derive"] }
+serde_json = "1.0"
+tauri = { version = "2.12.4", features = [] }
+tauri-plugin-single-instance = "2"
