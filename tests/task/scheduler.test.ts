@@ -86,12 +86,17 @@ describe('补跑策略', () => {
     expect(sched.missedRuns(sched.specs[0], D('2026-10-17T10:00:00'))).toHaveLength(0)
   })
 
-  it('on_start：启动补跑错过次数（08/09 两次）', () => {
-    const sched = new Scheduler(() => D('2026-10-17T10:00:00'))
-    // lastRunAt 用 ISO-Z（应用侧 toISOString 格式）：本地 07:00 = UTC 前一日 23:00
+  it('on_start：启动补跑错过次数（UTC 00/01 两次）', () => {
+    // 全部用 ISO-Z 显式时刻，避免依赖运行环境时区（UTC runner 上原写法必挂）
+    const now = new Date('2026-10-17T02:00:00Z')
+    const sched = new Scheduler(() => now)
+    // lastRunAt 为应用侧 toISOString 格式
     sched.register([{ id: 's', name: 'n', ...hourly, catchUp: 'on_start', lastRunAt: '2026-10-16T23:00:00.000Z' }])
-    const missed = sched.missedRuns(sched.specs[0], D('2026-10-17T10:00:00'))
-    expect(missed.map((d) => d.getHours())).toEqual([8, 9])
+    const missed = sched.missedRuns(sched.specs[0], now)
+    expect(missed.map((d) => d.toISOString())).toEqual([
+      '2026-10-17T00:00:00.000Z',
+      '2026-10-17T01:00:00.000Z',
+    ])
   })
 
   it('禁用任务不触发', () => {
