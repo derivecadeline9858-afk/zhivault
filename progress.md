@@ -10,7 +10,7 @@
 | 0 | 脚手架与品牌 | ✅ 完成 | 四道门全绿；zip 3.24MB；启动 0.18s；品牌露出点 1-4 截图核对通过 |
 | 1 | 数据层 | ✅ 完成 | 四道门全绿；store 测试 34 新增全过（合计 51/51）；build 成功 |
 | 2 | 采集内核 | ✅ 完成 | 四道门全绿；fetch 测试 29 新增全过（合计 80/80）；build 成功 |
-| 3 | 采集器与执行器 | ⚪ 未开始 | |
+| 3 | 采集器与执行器 | ✅ 完成 | tsc/eslint 0 错误；vitest 118/118（新增 38）；纯 TS 无壳改动 |
 | 4 | 导出引擎 | ⚪ 未开始 | |
 | 5 | GUI（P0 页面） | ⚪ 未开始 | |
 | 6 | 安全与合规 | ⚪ 未开始 | |
@@ -40,6 +40,15 @@
 - `cargo test` → 2/2 通过（tauri-plugin-sql 编入）
 - `pnpm tauri build` → 成功（release 53.65s，NSIS 3.62MiB，tauri-plugin-sql 编入）
 - 终态复跑：`pnpm test` 51/51、`tsc` 0 错误
+
+### 任务 3（2026-10-17）—— 采集器与执行器
+
+- RED：`tests/zhihu` 7 文件全败（模块不存在）→ 实现后 **38/38**
+- 全量 `pnpm test` → 21 文件 **118/118**（累计）
+- `pnpm tsc` → 0 错误（修 CollectorTarget 收窄、rawJson 类型、未用参数等）
+- `pnpm eslint` → 0 错误 1 warning（上游约定）
+- 壳无改动 → 按 §9.4-4 免跑 tauri build；cargo test 沿用任务 2 的 2/2
+- 验收映射：mock API 全类型端到端 ✓（8 类目标+搜索，真实 :memory: 库）；评论树层级+赞数筛选 ✓；二次增量产生版本记录 ✓（revision 递增/旧版留存/幂等不变）；并发下总速率不超额 ✓（真实令牌桶+虚拟时钟定时器调度，相邻请求间隔 ≥1000ms）；断点续抓 ✓（游标 capture_meta，恢复后 offset=1 续页）
 
 ### 任务 2（2026-10-17）—— 采集内核
 
@@ -90,3 +99,9 @@
 - **Ruling-17 签名 eval 走 Rust 命令**：`@tauri-apps/api` 2.x 未暴露 `WebviewWindow.eval`（全包无此 API）；决策：JS 侧创建隐藏窗口（`core:webview:allow-create-webview-window`），eval 经自建命令 `eval_in_webview(label, js)`（Rust `WebviewWindow::eval`），signature-bridge 窗口加入 capability windows 白名单。代价：多一次 IPC；签名脚本入口 `window.__zhivault_sign_entry__` 需在真实知乎页面校准（任务 3 联调/运行时）。
 - **Ruling-18 风控文案识别**：正则特征（风控/安全验证/系统检测异常/操作过于频繁），命中即 RISK_CONTROL + 退避 0.2 req/s（PRD §7.4-2）；429 同理。真实文案样例在联调期补充进测试。代价：误伤含这些词的正常正文概率低，且仅触发降速不阻断。
 - **Ruling-19 内核可注入边界**：传输层（生产 axios 适配）与签名桥均为构造注入；验收按 PRD 用 mock 签名桥覆盖限速/退避/缓存/错误码（29 用例）。axios 传输层属网络边界不做单测，联调期覆盖。
+- **Ruling-20 URL 实体口径**：PRD §10-3 写"7 类实体"，§5.1 P0 清单列 8 类（含用户活动）；按 §5.1 实现 8 类目标解析 + 评论树/搜索两个独立采集器，"七类采集器"理解为内容类采集器口径。代价：无。
+- **Ruling-21 Fetcher 契约**：采集器经 `fetcher.fetchJson(url, {params})` 取数（生产 = kernel 绑定会话 d_c0）；测试替身必须用 `urlWithParams` 把 params 拼进 URL 以模拟生产 kernel——直接用裸 URL 路由会丢 order_by/offset/q 等参数（本任务 3 处测试 bug 根因）。
+- **Ruling-22 统计语义**：`fetched` = API 条目数（含被时间窗/赞数过滤项），created/updated/unchanged = 实体保存结果（store SaveResult）；author/collection 等无版本表不计保存状态。activity 等非版本实体用 getActivity 预查区分 created/updated。代价：fetched 与入库数不同属预期（运行视图五联计数口径）。
+- **Ruling-23 虚拟时钟测试陷阱**：sleep 内直接推进全局时钟会让"后续首个 acquire"读到推进后的时间而重复消费同一时段令牌（假 0 间隔）；必须定时器队列 + 微任务排干（1000 跳）+ 最早到期推进的迷你调度器。只影响测试设施，产品代码无碍。
+- **Ruling-24 图片池生产接线延后**：`ImageDownloader`/`exists` 为注入边界（下载经传输层、exists 查图片池目录）；生产 fs 下载器依赖 fs 插件 scope，随任务 5 GUI 接线（PRD §7.1 壳 FS 权限）。代价：图片本地化端到端在任务 5 后可用。
+- **Ruling-25 API 端点为契约常量**：所有 v4 端点/参数名为 mock 契约（`API_V4` 常量集中），真实联调（任务 3 后段/任务 5）按线上响应校准 include 字段与分页字段。

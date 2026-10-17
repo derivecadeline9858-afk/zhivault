@@ -184,7 +184,7 @@ export class ContentStore {
       createdAt: row.created_at ?? undefined,
       answerCount: row.answer_count == null ? undefined : Number(row.answer_count),
       followerCount: row.follower_count == null ? undefined : Number(row.follower_count),
-      rawJson: row.raw_json!,
+      rawJson: String(row.raw_json),
       capturedAt: row.captured_at!,
       updatedAt: row.updated_at!,
     }))
@@ -214,7 +214,7 @@ export class ContentStore {
       createdAt: row.created_at ?? undefined,
       voteupCount: row.voteup_count == null ? undefined : Number(row.voteup_count),
       commentCount: row.comment_count == null ? undefined : Number(row.comment_count),
-      rawJson: row.raw_json!,
+      rawJson: String(row.raw_json),
       capturedAt: row.captured_at!,
       updatedAt: row.updated_at!,
     }))
@@ -246,7 +246,7 @@ export class ContentStore {
       voteupCount: row.voteup_count == null ? undefined : Number(row.voteup_count),
       commentCount: row.comment_count == null ? undefined : Number(row.comment_count),
       columnId: row.column_id ?? undefined,
-      rawJson: row.raw_json!,
+      rawJson: String(row.raw_json),
       capturedAt: row.captured_at!,
       updatedAt: row.updated_at!,
     }))
@@ -274,7 +274,7 @@ export class ContentStore {
       createdAt: row.created_at ?? undefined,
       likeCount: row.like_count == null ? undefined : Number(row.like_count),
       commentCount: row.comment_count == null ? undefined : Number(row.comment_count),
-      rawJson: row.raw_json!,
+      rawJson: String(row.raw_json),
       capturedAt: row.captured_at!,
       updatedAt: row.updated_at!,
     }))
@@ -318,7 +318,7 @@ export class ContentStore {
       authorId: row.author_id ?? undefined,
       likeCount: row.like_count == null ? undefined : Number(row.like_count),
       createdAt: row.created_at ?? undefined,
-      rawJson: row.raw_json!,
+      rawJson: String(row.raw_json),
       capturedAt: row.captured_at!,
       updatedAt: row.updated_at!,
     }
