@@ -31,7 +31,7 @@
 
 绿色免安装，解压即用（便携模式：数据库与配置在程序旁 `zhivault-data/`，**整目录复制即可迁移**）。
 
-1. 从 [Releases](https://github.com/PLACEHOLDER/zhivault/releases) 下载 `zhivault-x.x.x-x64.zip`
+1. 从 [Releases](https://github.com/derivecadeline9858-afk/zhivault/releases) 下载 `zhivault-x.x.x-x64.zip`
 2. 解压到任意目录（不要放 Program Files）
 3. 运行 `zhivault.exe`
 

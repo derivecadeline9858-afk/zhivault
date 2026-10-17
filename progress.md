@@ -206,4 +206,4 @@
 - **Ruling-53 AI Key 独立密文文件**：ai-key.bin 与 credentials.bin 分离（不同生命周期：注销凭据不清 AI Key）；Rust 复用 credential::save/load/clear，三命令薄封装。
 - **Ruling-54 摘要输出容错**：模型未按 JSON 输出时降级为截断纯文本 + 空标签（不判失败，可用性优先）；JSON 解析剥 ```json 围栏；摘要硬上限 120 字、标签 ≤8。
 - **Ruling-55 audit 门禁驱动 vitest 4 升级**：npmmirror 无 audit 端点（workflow 显式走官方 registry）；初跑 2 个 critical（tinypool 1.x 无补丁版）阻塞发布，修复 = vitest 3.2.7→4.1.12 大版本升级，238/238 零测试改动复绿（§9.3 真修而非绕过）；复跑 audit 全绿。代价：vitest 5 已发布但非必要不追新。
-- **Ruling-56 发布占位链接**：README/官网/关于页仓库链接均为 `github.com/PLACEHOLDER/zhivault` 占位——真实仓库创建后全局替换并填入 `REPO_URL`（任务 0 Ruling-3 挂账项随发布闭环）。
+- **Ruling-56 发布占位链接**：README/官网/关于页仓库链接原均为 `github.com/PLACEHOLDER/zhivault` 占位——2026-10-17 真实仓库已创建（derivecadeline9858-afk/zhivault），全局替换完成并填入 `REPO_URL`（任务 0 Ruling-3 挂账项闭环）。
