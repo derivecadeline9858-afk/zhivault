@@ -207,3 +207,4 @@
 - **Ruling-54 摘要输出容错**：模型未按 JSON 输出时降级为截断纯文本 + 空标签（不判失败，可用性优先）；JSON 解析剥 ```json 围栏；摘要硬上限 120 字、标签 ≤8。
 - **Ruling-55 audit 门禁驱动 vitest 4 升级**：npmmirror 无 audit 端点（workflow 显式走官方 registry）；初跑 2 个 critical（tinypool 1.x 无补丁版）阻塞发布，修复 = vitest 3.2.7→4.1.12 大版本升级，238/238 零测试改动复绿（§9.3 真修而非绕过）；复跑 audit 全绿。代价：vitest 5 已发布但非必要不追新。
 - **Ruling-56 发布占位链接**：README/官网/关于页仓库链接原均为 `github.com/PLACEHOLDER/zhivault` 占位——2026-10-17 真实仓库已创建（derivecadeline9858-afk/zhivault），全局替换完成并填入 `REPO_URL`（任务 0 Ruling-3 挂账项闭环）。
+- **Ruling-57 CI registry 覆盖**：首发 Actions（release #1）在"安装依赖"步骤失败（1m17s，后续全跳过）。排查：本地同命令 `pnpm install --frozen-lockfile` 秒过；最小复现（仅 package.json + lockfile + workspace + postinstall，npx pnpm@10）也成功——排除版本与锁文件因素。根因定为 `.npmrc` 的 npmmirror 在 GitHub 海外 runner 上不稳定（lockfile 未锁 tarball URL，印证可安全换源）。修复：`release.yml` 加 `npm_config_registry: https://registry.npmjs.org` 环境变量覆盖 + PNPM_VERSION 10→11 对齐本机。代价：国内用户自行构建时仍走 npmmirror（本地 .npmrc 不变），仅 CI 覆盖。
