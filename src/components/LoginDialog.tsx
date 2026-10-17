@@ -1,6 +1,6 @@
 import { useState } from 'react'
 import { Button } from '@/components/ui/button'
-import { sessionStore } from '@/lib/session-store'
+import { sessionStore } from '@/lib/app-store'
 import type { EntityType } from '@/core/zhihu/url-parser'
 import { requiredLoginLevel } from '@/core/zhihu/visibility'
 
@@ -19,14 +19,14 @@ export function LoginDialog({ onClose }: { onClose: () => void }) {
   const [confirming, setConfirming] = useState(false)
 
   const save = () => {
-    sessionStore.setCookie(cookie)
-    onClose()
+    void sessionStore.login(cookie).then(onClose)
   }
 
   const logout = () => {
-    sessionStore.clear()
-    setConfirming(false)
-    onClose()
+    void sessionStore.logout().then(() => {
+      setConfirming(false)
+      onClose()
+    })
   }
 
   return (
@@ -79,7 +79,7 @@ export function LoginDialog({ onClose }: { onClose: () => void }) {
           {sessionStore.loggedIn ? (
             confirming ? (
               <div className="flex items-center gap-2">
-                <span className="text-sm text-destructive">确认清除凭据并恢复匿名？</span>
+                <span className="text-sm text-destructive">确认清除凭据并恢复匿名？（将删除本机加密凭据文件）</span>
                 <Button size="sm" variant="destructive" onClick={logout}>
                   确认注销
                 </Button>
@@ -93,7 +93,7 @@ export function LoginDialog({ onClose }: { onClose: () => void }) {
               </Button>
             )
           ) : (
-            <span className="text-xs text-muted-foreground">当前：匿名</span>
+            <span className="text-xs text-muted-foreground">当前：匿名（凭据经 DPAPI 加密保存，注销即删除）</span>
           )}
           <Button variant="ghost" onClick={onClose}>
             关闭

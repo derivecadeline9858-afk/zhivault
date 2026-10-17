@@ -4,6 +4,12 @@ import { expect, test } from '@playwright/test'
 test('粘贴 URL → 运行(mock) → 导出 全链路', async ({ page }) => {
   await page.goto('/')
 
+  // 0) 首次启动协议（不可跳过）：splash 后必现（全新浏览器配置）
+  await page.getByTestId('agreement-dialog').waitFor({ timeout: 30_000 })
+  await page.getByRole('checkbox').check()
+  await page.getByRole('button', { name: '同意并进入' }).click()
+  await expect(page.locator('#url-input')).toBeVisible()
+
   // 1) 首页：粘贴 URL → 类型识别 → 添加任务
   await page.locator('#url-input').fill('https://www.zhihu.com/question/1/answer/a1')
   await expect(page.getByTestId('type-chip')).toContainText('回答')

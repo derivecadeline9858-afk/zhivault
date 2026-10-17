@@ -106,6 +106,39 @@ fn normalize_lexically(p: &std::path::Path) -> std::path::PathBuf {
     out
 }
 
+fn credentials_path(state: &State<'_, AppState>) -> std::path::PathBuf {
+    let guard = state.data_dir.lock().unwrap_or_else(|e| e.into_inner());
+    guard.join("credentials.bin")
+}
+
+/// 凭据保存（DPAPI 加密落盘，PRD §8-1）
+#[tauri::command]
+pub fn credential_save(data: String, state: State<'_, AppState>) -> Result<(), String> {
+    crate::credential::save(&credentials_path(&state), &data)
+}
+
+/// 凭据读取（解密）；未保存返回 None
+#[tauri::command]
+pub fn credential_load(state: State<'_, AppState>) -> Result<Option<String>, String> {
+    crate::credential::load(&credentials_path(&state))
+}
+
+/// 注销全链路：删凭据文件（内存副本由前端清除）
+#[tauri::command]
+pub fn credential_clear(state: State<'_, AppState>) -> Result<(), String> {
+    crate::credential::clear(&credentials_path(&state))
+}
+
+/// SSRF 白名单判定（PRD §8-3，前端请求前必查，不可绕过）
+#[tauri::command]
+pub fn guard_url(url: String) -> Result<(), String> {
+    if crate::network_guard::is_allowed_url(&url) {
+        Ok(())
+    } else {
+        Err(format!("SSRF 白名单拒绝：{url}"))
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -124,5 +157,24 @@ mod tests {
         let exe_dir = Path::new("C:\\Tools\\知藏");
         let dir = resolve_data_dir(exe_dir);
         assert_eq!(dir.parent(), Some(exe_dir));
+    }
+
+    #[test]
+    fn resolve_under_accepts_normal_paths() {
+        let dir = std::env::temp_dir().join("zhivault-resolve-test");
+        std::fs::create_dir_all(&dir).unwrap();
+        let dir_c = dir.canonicalize().unwrap();
+        let full = resolve_under(dir.to_str().unwrap(), "书/html/index.html").unwrap();
+        assert!(full.starts_with(&dir_c));
+    }
+
+    #[test]
+    fn resolve_under_rejects_dotdot_and_absolute() {
+        let dir = std::env::temp_dir().join("zhivault-resolve-test2");
+        std::fs::create_dir_all(&dir).unwrap();
+        let root = dir.to_str().unwrap().to_string();
+        assert!(resolve_under(&root, "../evil.txt").is_err());
+        assert!(resolve_under(&root, "a/../../evil.txt").is_err());
+        assert!(resolve_under(&root, "C:/Windows/evil.txt").is_err());
     }
 }

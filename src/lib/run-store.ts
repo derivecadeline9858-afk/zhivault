@@ -1,6 +1,7 @@
 import type { CollectStats } from '@/core/zhihu/collectors'
 import { emptyStats } from '@/core/zhihu/collectors/shared'
 import { getGlobalRateLimiter } from '@/core/fetch/rate-limiter'
+import type { LogRetention } from '@/core/security/log-retention'
 import { redactLog } from '@/core/security/log-redact'
 import type { StoreLike } from '@/core/zhihu/collectors'
 import { BatchExecutor, type TaskState } from '@/core/task/executor'
@@ -69,6 +70,7 @@ export class RunStore {
       store: StoreLike
       fetcherFactory: (demo: boolean) => Fetcher
       session?: { dC0: string; cookie?: string }
+      retention?: LogRetention
     },
   ) {}
 
@@ -92,8 +94,10 @@ export class RunStore {
   }
 
   log(level: RunLogEntry['level'], text: string): void {
-    const logs = [...this.state.logs, { level, text: redactLog(text), at: new Date().toISOString() }]
+    const entry = { level, text: redactLog(text), at: new Date().toISOString() }
+    const logs = [...this.state.logs, entry]
     this.patch({ logs: logs.length > MAX_LOGS ? logs.slice(logs.length - MAX_LOGS) : logs })
+    this.deps.retention?.append(entry)
   }
 
   addTask(url: string): { ok: boolean; error?: string } {

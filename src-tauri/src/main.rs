@@ -44,7 +44,11 @@ fn main() {
             commands::eval_in_webview,
             commands::export_write_text,
             commands::export_write_binary,
-            commands::open_path
+            commands::open_path,
+            commands::credential_save,
+            commands::credential_load,
+            commands::credential_clear,
+            commands::guard_url
         ])
         .run(tauri::generate_context!())
         .expect("error while building tauri application");

@@ -1,5 +1,5 @@
 import { CircleUserRound, Download, Gauge, House, Info, Library, Settings } from 'lucide-react'
-import { useState } from 'react'
+import { useEffect, useState } from 'react'
 import { NavLink, Route, Routes } from 'react-router-dom'
 import { LoginDialog } from '@/components/LoginDialog'
 import { AboutPage } from '@/pages/AboutPage'
@@ -9,7 +9,7 @@ import { RunPage } from '@/pages/RunPage'
 import { SettingsPage } from '@/pages/SettingsPage'
 import { TasksPage } from '@/pages/TasksPage'
 import { cn } from '@/lib/utils'
-import { sessionStore } from '@/lib/session-store'
+import { sessionStore } from '@/lib/app-store'
 
 const NAV_ITEMS = [
   { to: '/', label: '首页 / 任务', icon: House },
@@ -23,6 +23,12 @@ const NAV_ITEMS = [
 export function AppShell() {
   const [loginOpen, setLoginOpen] = useState(false)
   const [loggedIn, setLoggedIn] = useState(sessionStore.loggedIn)
+
+  useEffect(() => {
+    const unsub = sessionStore.subscribe(() => setLoggedIn(sessionStore.loggedIn))
+    void sessionStore.hydrate()
+    return unsub
+  }, [])
 
   return (
     <div className="flex h-screen bg-background text-foreground">

@@ -4,6 +4,7 @@ import { settingsFooter } from '@/branding'
 import { Button } from '@/components/ui/button'
 import { getAppInfo, getDataDir } from '@/ipc'
 import { getGlobalRateLimiter } from '@/core/fetch/rate-limiter'
+import { logRetention } from '@/lib/app-store'
 import { getTheme, setTheme, type ThemeMode } from '@/lib/theme'
 import { cn } from '@/lib/utils'
 
@@ -122,6 +123,27 @@ export function SettingsPage() {
           <p className="max-w-2xl text-sm text-muted-foreground">
             仅限个人学习存档；内置限速（默认 ≤1 req/s）；不破解不绕过付费墙，不触碰盐选等付费内容；不绕过知乎人机验证（触发风控自动减速并提示）。更新包将经 Ed25519 签名校验（任务 6）。
           </p>
+        </section>
+
+        <section>
+          <h2 className="mb-4 text-lg font-semibold">日志与诊断</h2>
+          <p className="mb-3 text-sm text-muted-foreground">
+            日志保留 5 天滚动清理；诊断导出自动脱敏（凭据类键值遮蔽）。
+          </p>
+          <Button
+            variant="outline"
+            onClick={() => {
+              const text = logRetention.exportDiagnostics()
+              const url = URL.createObjectURL(new Blob([text], { type: 'text/plain' }))
+              const a = document.createElement('a')
+              a.href = url
+              a.download = `zhivault-diagnostics-${new Date().toISOString().slice(0, 10)}.txt`
+              a.click()
+              URL.revokeObjectURL(url)
+            }}
+          >
+            导出诊断日志
+          </Button>
         </section>
 
         <section>

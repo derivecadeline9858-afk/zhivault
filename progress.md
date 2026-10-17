@@ -13,7 +13,7 @@
 | 3 | 采集器与执行器 | ✅ 完成 | tsc/eslint 0 错误；vitest 118/118（新增 38）；纯 TS 无壳改动 |
 | 4 | 导出引擎 | ✅ 完成 | 四道门全绿；导出测试 22 新增全过（合计 140/140）；build 成功 |
 | 5 | GUI（P0 页面） | ✅ 完成 | 四道门全绿 + E2E 12s 通过（含 pandoc ✅）；品牌露出点复核；zip 16.7MB |
-| 6 | 安全与合规 | ⚪ 未开始 | |
+| 6 | 安全与合规 | ✅ 完成 | 四道门全绿（vitest 180/180 + cargo 10/10 + build + E2E 含协议门） |
 | 7 | PDF 与时间自定义 | ⚪ 未开始 | |
 | 8 | 检索与阅读器 | ⚪ 未开始 | |
 | 9 | AI 中心 | ⚪ 未开始 | |
@@ -40,6 +40,20 @@
 - `cargo test` → 2/2 通过（tauri-plugin-sql 编入）
 - `pnpm tauri build` → 成功（release 53.65s，NSIS 3.62MiB，tauri-plugin-sql 编入）
 - 终态复跑：`pnpm test` 51/51、`tsc` 0 错误
+
+### 任务 6（2026-10-17）—— 安全与合规
+
+- §8 全表单测对照：
+  - #1 凭据：DPAPI protect/unprotect roundtrip + 存/取/删生命周期（Rust 3）；脱敏 14 用例（任务 5）；注销全链路 3 用例（TS）+ Rust clear
+  - #2 更新：Ed25519+SHA-256 双校验 5 用例（篡改必拒/重签必拒/字段劫持必拒/下载失败结构化/零凭据）
+  - #3 SSRF：Rust 3 + TS 2 用例（zhihu/zhimg/updates 放行；evil/内网/ftp/畸形拒绝）
+  - #4 导出 XSS：sanitize 5 + 阅读器 preview 2 + 书架 sandbox iframe 落地
+  - #5 路径穿越：TS 3 + Rust 2 用例（../ 与绝对路径）
+  - #8 协议弹层：4 用例（不可跳过/无关闭入口/合规要点）+ E2E 门禁走通
+  - #9 日志隐私：留存滚动 3 用例 + 诊断导出脱敏 + RunStore 全量日志挂接
+  - #6 lockfile 入库 ✓（CI audit 随任务 10）；#7 单例锁+WAL ✓（任务 0/1）
+- 全量 `pnpm test` → 38 文件 **180/180**；`cargo test` **10/10**；tsc/eslint 0 错误
+- `pnpm tauri build` → 成功（NSIS 15.76MiB）；`pnpm test:e2e` → 通过（12.8s，含协议弹层门）
 
 ### 任务 5（2026-10-17）—— GUI（P0 页面）
 
@@ -134,3 +148,8 @@
 - **Ruling-35 登录态 MVP**：Cookie 仅存内存（关闭即清），DPAPI 加密落盘 + 注销全链路属任务 6；匿名 d_c0 自动获取同任务 6。扫码登录入口灰显（需知乎网页端配合，Cookie 粘贴先行）。
 - **Ruling-36 pandoc.wasm 落地方式（修订 Ruling-33）**：vite 预检插件把依赖内裸 `import('./pandoc.wasm')` 改写为指向 `/pandoc.wasm` 的 URL 导出；wasm 经 `public/` 进 dist（postinstall 自动从依赖复制，58MB 二进制不入库 .gitignore）。dev 与生产构建均验证可用，E2E 的 markdown ✅。嵌入后 exe 26MB / 便携 zip 16.7MB（资产压缩嵌入），<30MB 目标保持——原旁置 scheme 预案撤销。
 - **Ruling-37 StoreLike 抽象**：采集器仓储面抽象为 StoreLike（unknown 参数 + 方法双变体兼容），浏览器演示模式用 BrowserDemoStore 内存实现，应用内就绪后 RunStore.setStore 切换真实便携库。代价：StoreLike 参数为 unknown，调用点类型安全靠 ContentStore 真实路径保障。
+- **Ruling-38 SSRF 双层守卫**：采集运行在 WebView TS 层（PRD 壳层强制假设的"全流量走 Rust 代理"未采用——架构代价与收益不成比例，诚实记录）。落地：TS 传输层必经守卫，应用内裁决走 Rust `guard_url` 命令（同规则表 single source 在 Rust，TS 本地表仅独立环境用）；规则 = zhihu.com/*.zhihu.com/zhimg.com/*.zhimg.com + 更新域占位，仅 http/https。代价：独立环境（无壳）用 TS 表，双表需同步（Rust 测试锁定规则，改动须双改）。
+- **Ruling-39 更新域占位**：`updates.zhivault.app` 为占位常量（Rust network_guard + TS url-guard + updater 默认），任务 10 发布替换真实域名并分发公钥。
+- **Ruling-40 windows crate 0.61 API**：DPAPI 结构为 `CRYPT_INTEGER_BLOB`（DATA_BLOB 已更名），`LocalFree` 在 `Win32::Foundation`。
+- **Ruling-41 TS 5.9 BufferSource 收窄**：WebCrypto 入参要求 `ArrayBufferView<ArrayBuffer>`，业务侧 `Uint8Array`（ArrayBufferLike）需 `as unknown as BufferSource` 桥接；已在 updater 统一处理。
+- **Ruling-42 协议同意持久化**：localStorage 键 `zhivault.agreement.v1`（含版本号），协议内容变更时递增版本重新征求；E2E 全新配置每次走完整协议门。

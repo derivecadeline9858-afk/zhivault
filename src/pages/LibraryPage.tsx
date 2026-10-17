@@ -4,6 +4,7 @@ import { Button } from '@/components/ui/button'
 import type { ContentStore } from '@/core/store/content-store'
 import type { SearchHit } from '@/core/store/types'
 import { getDb } from '@/lib/db'
+import { buildReaderPreviewDoc } from '@/lib/reader-preview'
 
 const TYPE_LABELS: Record<string, string> = {
   answer: '回答',
@@ -109,17 +110,20 @@ export function LibraryPage() {
             </ul>
           )}
         </div>
-        <div className="overflow-y-auto rounded-lg border border-border bg-card p-4" data-testid="preview-drawer">
+        <div className="overflow-hidden rounded-lg border border-border bg-card" data-testid="preview-drawer">
           {preview ? (
             <>
-              <h3 className="mb-2 font-semibold">{preview.title}</h3>
-              <article
-                className="prose-sm text-sm leading-relaxed"
-                dangerouslySetInnerHTML={{ __html: preview.html }}
+              <h3 className="border-b border-border p-4 font-semibold">{preview.title}</h3>
+              {/* sandbox iframe（无脚本）渲染，正文经导出级清洗（PRD §8-4） */}
+              <iframe
+                title="内容预览"
+                sandbox=""
+                className="h-full w-full bg-background"
+                srcDoc={buildReaderPreviewDoc(preview.title, preview.html)}
               />
             </>
           ) : (
-            <p className="text-sm text-muted-foreground">点击左侧结果查看预览</p>
+            <p className="p-4 text-sm text-muted-foreground">点击左侧结果查看预览</p>
           )}
         </div>
       </div>
