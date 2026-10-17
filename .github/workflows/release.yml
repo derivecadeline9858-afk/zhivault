@@ -7,7 +7,11 @@ on:
       - 'v*'
 
 env:
-  PNPM_VERSION: '10'
+  PNPM_VERSION: '11'
+  # GitHub 海外 runner 访问 npmmirror 不稳定（首次发布安装依赖失败根因）：
+  # CI 内覆盖为官方 registry；lockfile 未锁定 tarball URL，切换零成本。
+  # 审计步骤另行显式 --registry npmjs（npmmirror 无 audit 端点）。
+  npm_config_registry: 'https://registry.npmjs.org'
 
 jobs:
   release:
