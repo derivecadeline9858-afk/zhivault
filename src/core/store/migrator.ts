@@ -1,5 +1,6 @@
 import schema from './schema.sql?raw'
 import v2Schedule from './migrations/v2-schedule.sql?raw'
+import v3RunRecord from './migrations/v3-run-record.sql?raw'
 import type { SqlExecutor } from './sql-executor'
 
 export interface Migration {
@@ -12,6 +13,7 @@ export interface Migration {
 export const MIGRATIONS: Migration[] = [
   { version: 1, name: 'initial-schema', sql: schema },
   { version: 2, name: 'schedule-table', sql: v2Schedule },
+  { version: 3, name: 'run-record', sql: v3RunRecord },
 ]
 
 /** 将迁移 SQL 切为单条语句执行（DDL 无过程体，按分号切分安全） */

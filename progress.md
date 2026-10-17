@@ -15,7 +15,7 @@
 | 5 | GUI（P0 页面） | ✅ 完成 | 四道门全绿 + E2E 12s 通过（含 pandoc ✅）；品牌露出点复核；zip 16.7MB |
 | 6 | 安全与合规 | ✅ 完成 | 四道门全绿（vitest 180/180 + cargo 10/10 + build + E2E 含协议门） |
 | 7 | PDF 与时间自定义 | ✅ 完成 | 四道门全绿（204/204 + cargo 11/11 含真实 Edge 打印 + build + E2E） |
-| 8 | 检索与阅读器 | ⚪ 未开始 | |
+| 8 | 检索与阅读器 | ✅ 完成 | 门全绿：vitest 223/223（高亮/diff 快照/跨版本锚定/迁移 v3）；E2E 15s |
 | 9 | AI 中心 | ⚪ 未开始 | |
 | 10 | 发布 | ⚪ 未开始 | |
 
@@ -40,6 +40,17 @@
 - `cargo test` → 2/2 通过（tauri-plugin-sql 编入）
 - `pnpm tauri build` → 成功（release 53.65s，NSIS 3.62MiB，tauri-plugin-sql 编入）
 - 终态复跑：`pnpm test` 51/51、`tsc` 0 错误
+
+### 任务 8（2026-10-17）—— 检索与阅读器（P1）
+
+- 高亮：6 用例（中文整词/多词/大小写/HTML 转义防注入/查询词提取）
+- diff：5 快照用例（增/删/改/复杂混合/多标签块切分）
+- 跨版本锚定：5 用例（精确/中间改 paragraph/大幅改 missing/仅前缀 paragraph/短选文）
+- 迁移 v3 run_record + listRevisionsBetween（3 用例）；RunStore 运行落记录（source 区分手动/监控）
+- 书架：类型+时间范围组合筛选、<mark> 高亮结果、「打开阅读」入口
+- 阅读器：sandbox="allow-scripts"（opaque origin）+ 选择桥划词标注（四色+批注）+ 标注锚定状态展示 + 版本时间线双选并排 diff
+- 变更报告页：运行记录表（来源/五计数）展开修订清单直达阅读器
+- 全量 `pnpm test` → 45 文件 **223/223**；tsc/eslint 0 错误；纯 TS 免跑壳门；E2E 15s 通过
 
 ### 任务 7（2026-10-17）—— PDF 与时间自定义
 
@@ -167,3 +178,7 @@
 - **Ruling-45 补跑边界语义**：`missedRuns` 计 (lastRun, now) 严格开区间——当前时刻的触发归 tick 处理，避免补跑与正常触发重复执行；时段外错过不计入补跑。
 - **Ruling-46 日期解析混合语义**：jsdom 下 `Date.parse('YYYY-MM-DD')` 按 UTC、`new Date('YYYY-MM-DDTHH:mm:ss')` 按本地——测试数据必须带显式 `Z`；inTimeWindow 实现不变（业务侧窗口日期按 UTC 午夜解释，已记档）。
 - **Ruling-47 Edge 无头打印隔离 profile**：默认 profile 的 Edge CLI 会挂接到用户正在运行的 Edge 实例导致 `status()` 永久阻塞（22 个残留进程实证）；必须 `--user-data-dir=<独立目录>` + `--no-first-run` 等隔离参数。E2E 与重型后台构建并发时可能抖动（本机实证一次超时、独立复跑绿），验收以独立运行结果为准。
+- **Ruling-48 阅读器 sandbox 组合语义**：书架预览用 `sandbox=""`（纯展示零脚本）；阅读器用 `sandbox="allow-scripts"`（不含 same-origin → opaque origin），正文已清洗无脚本，仅注入受信选择桥（postMessage 划词）——满足 §8-4「知乎内容无脚本」安全意图且标注可用。代价：iframe 内无法直接用 KaTeX 运行时渲染（LaTeX 源码保留显示；KaTeX 预渲染列为后续优化）。
+- **Ruling-49 diff 语义**：块级 LCS（h1-6/p/li/ul/ol/blockquote/pre 切分），修改表现为相邻 del+add（并排视图左删右增）；快照测试锁定输出形状。
+- **Ruling-50 锚定文本坐标**：locateAnchor 返回纯文本坐标（去标签空间），UI 以段落级呈现；「精确」=前后指纹按序同现，「段落级降级」=仅前缀命中，全失配提示「内容已被大幅修改」（PRD §0-2 文案）。
+- **Ruling-51 变更报告数据源**：run_record（迁移 v3）+ content_revision.captured_at 区间查询——运行记录与变更清单天然一致（PRD §0 UI-1），无需采集器逐实体上报；「删除」计数口径：知乎删帖后本地留存（备份语义），运行计数里的 deleted 列暂不拆分（PRD §5.4 变更周报 N更新/M修改/K删除，K 需在线探测，列为后续）。

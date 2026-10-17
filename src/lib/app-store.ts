@@ -65,8 +65,21 @@ void sessionStore.hydrate()
 void getDb().then((db) => {
   if (!db) return
   runStore.setStore(db)
+  runStoreDepsWire(db)
   void startSchedulerLoop(db)
 })
+
+function runStoreDepsWire(db: NonNullable<Awaited<ReturnType<typeof getDb>>>): void {
+  runStore.setOnRunFinished(async (rec) => {
+    await db.saveRunRecord({
+      id: `run-${Date.now()}`,
+      source: rec.source,
+      startedAt: rec.startedAt,
+      finishedAt: rec.finishedAt,
+      totals: rec.totals,
+    })
+  })
+}
 
 /** 监控调度循环（PRD §6.2 页 8）：每分钟 tick，启动补跑，到点自动增量并通知 */
 async function startSchedulerLoop(db: Awaited<ReturnType<typeof getDb>> & object): Promise<void> {
@@ -80,7 +93,12 @@ async function startSchedulerLoop(db: Awaited<ReturnType<typeof getDb>> & object
   }
   const enqueue = (spec: ScheduleSpec) => {
     for (const url of spec.urls ?? []) runStore.addTask(url)
-    if (runStore.state.phase === 'idle' && runStore.state.tasks.length > 0) void runStore.start()
+    if (runStore.state.phase === 'idle' && runStore.state.tasks.length > 0) {
+      runStore.runSource = 'monitor'
+      void runStore.start().finally(() => {
+        runStore.runSource = 'manual'
+      })
+    }
   }
   await refresh()
   // 启动补跑

@@ -73,12 +73,29 @@ export class RunStore {
       session?: { dC0: string; cookie?: string }
       retention?: LogRetention
       notifier?: Notifier
+      /** 运行结束回调（落 run_record 供变更报告页） */
+      onRunFinished?: (rec: {
+        source: string
+        startedAt: string
+        finishedAt: string
+        totals: CollectStats
+      }) => Promise<void>
     },
   ) {}
+
+  /** 运行来源：手动 / 监控调度（计入 run_record.source） */
+  runSource: 'manual' | 'monitor' = 'manual'
 
   /** 应用内就绪后替换为真实便携库（浏览器演示环境保持内存库） */
   setStore(store: StoreLike): void {
     this.deps = { ...this.deps, store }
+  }
+
+  /** 应用内就绪后注入运行记录回调 */
+  setOnRunFinished(
+    fn: (rec: { source: string; startedAt: string; finishedAt: string; totals: CollectStats }) => Promise<void>,
+  ): void {
+    this.deps = { ...this.deps, onRunFinished: fn }
   }
 
   subscribe(fn: () => void): () => void {
@@ -138,6 +155,7 @@ export class RunStore {
   async start(): Promise<void> {
     if (this.state.phase !== 'idle' || this.state.tasks.length === 0) return
     const tasks = this.state.tasks
+    const startedAt = new Date().toISOString()
     this.patch({ phase: 'running', totals: emptyStats() })
     this.log('INFO', `开始运行 ${tasks.length} 个任务${this.state.demoMode ? '（演示数据模式）' : ''}`)
 
@@ -161,6 +179,14 @@ export class RunStore {
         ?.notify('知藏监控命中', `新增 ${summary.totals.created} · 更新 ${summary.totals.updated}`)
         .catch(() => undefined)
     }
+    await this.deps.onRunFinished
+      ?.({
+        source: this.runSource,
+        startedAt,
+        finishedAt: new Date().toISOString(),
+        totals: summary.totals,
+      })
+      .catch(() => undefined)
     this.executor = null
     this.patch({ phase: 'idle', currentRate: getGlobalRateLimiter().getState().ratePerSecond })
   }

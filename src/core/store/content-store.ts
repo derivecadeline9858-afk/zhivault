@@ -689,6 +689,53 @@ export class ContentStore {
     await this.exec.run('DELETE FROM schedule WHERE id = ?', [id])
   }
 
+  // ---------- 运行记录（迁移 v3，变更报告页数据源） ----------
+
+  async saveRunRecord(rec: {
+    id: string
+    source: 'manual' | 'monitor' | string
+    startedAt: string
+    finishedAt: string | null
+    totals: unknown
+  }): Promise<void> {
+    await this.exec.run(
+      'INSERT INTO run_record (id, source, started_at, finished_at, totals_json) VALUES (?,?,?,?,?)',
+      [rec.id, rec.source, rec.startedAt, rec.finishedAt, JSON.stringify(rec.totals)],
+    )
+  }
+
+  async listRunRecords(limit = 100): Promise<
+    { id: string; source: string; startedAt: string; finishedAt: string | null; totals: unknown }[]
+  > {
+    const rows = await this.exec.all<Record<string, string | null>>(
+      'SELECT * FROM run_record ORDER BY started_at DESC LIMIT ?',
+      [limit],
+    )
+    return rows.map((r) => ({
+      id: String(r.id),
+      source: String(r.source),
+      startedAt: String(r.started_at),
+      finishedAt: r.finished_at == null ? null : String(r.finished_at),
+      totals: JSON.parse(String(r.totals_json)) as unknown,
+    }))
+  }
+
+  /** 时间窗内的版本记录（变更清单：某次运行产生了哪些修订） */
+  async listRevisionsBetween(since: string, until: string): Promise<RevisionRow[]> {
+    const rows = await this.exec.all<Record<string, string | number>>(
+      'SELECT * FROM content_revision WHERE captured_at > ? AND captured_at <= ? ORDER BY captured_at ASC',
+      [since, until],
+    )
+    return rows.map((r) => ({
+      entityType: r.entity_type as string,
+      entityId: r.entity_id as string,
+      revisionNo: Number(r.revision_no),
+      contentHtml: r.content_html as string,
+      contentHash: r.content_hash as string,
+      capturedAt: r.captured_at as string,
+    }))
+  }
+
   // ---------- FTS 检索 ----------
 
   async searchContent(

@@ -1,8 +1,10 @@
 import { Search } from 'lucide-react'
 import { useEffect, useState } from 'react'
+import { Link } from 'react-router-dom'
 import { Button } from '@/components/ui/button'
 import type { ContentStore } from '@/core/store/content-store'
 import type { SearchHit } from '@/core/store/types'
+import { extractTerms, highlightText } from '@/core/search/highlight'
 import { getDb } from '@/lib/db'
 import { buildReaderPreviewDoc } from '@/lib/reader-preview'
 
@@ -13,12 +15,21 @@ const TYPE_LABELS: Record<string, string> = {
   comment: '评论',
 }
 
+async function fetchEntity(db: ContentStore, hit: SearchHit): Promise<unknown> {
+  if (hit.entityType === 'answer') return db.getAnswer(hit.entityId)
+  if (hit.entityType === 'article') return db.getArticle(hit.entityId)
+  if (hit.entityType === 'pin') return db.getPin(hit.entityId)
+  return db.getComment(hit.entityId)
+}
+
 export function LibraryPage() {
   const [db, setDb] = useState<ContentStore | null>(null)
   const [query, setQuery] = useState('')
   const [error, setError] = useState('')
   const [results, setResults] = useState<SearchHit[]>([])
   const [filter, setFilter] = useState<string>('all')
+  const [timeFrom, setTimeFrom] = useState('')
+  const [timeTo, setTimeTo] = useState('')
   const [preview, setPreview] = useState<{ title: string; html: string } | null>(null)
 
   useEffect(() => {
@@ -29,10 +40,26 @@ export function LibraryPage() {
     if (!db) return
     setError('')
     try {
-      const hits = await db.searchContent(query.trim(), {
+      let hits = await db.searchContent(query.trim(), {
         entityTypes: filter === 'all' ? undefined : [filter],
         limit: 50,
       })
+      // 时间范围组合筛选（PRD §6.2 页 4）
+      if (timeFrom || timeTo) {
+        const createdAts = await Promise.all(
+          hits.map(async (h) => {
+            const row = await fetchEntity(db, h)
+            return (row as { createdAt?: string } | undefined)?.createdAt
+          }),
+        )
+        hits = hits.filter((_, i) => {
+          const t = createdAts[i] ? Date.parse(createdAts[i]!) : null
+          if (t === null) return false
+          if (timeFrom && t < Date.parse(timeFrom)) return false
+          if (timeTo && t > Date.parse(timeTo) + 24 * 3600 * 1000 - 1) return false
+          return true
+        })
+      }
       setResults(hits)
     } catch (e) {
       setError((e as Error).message)
@@ -42,14 +69,7 @@ export function LibraryPage() {
 
   const openPreview = async (hit: SearchHit) => {
     if (!db) return
-    const row =
-      hit.entityType === 'answer'
-        ? await db.getAnswer(hit.entityId)
-        : hit.entityType === 'article'
-          ? await db.getArticle(hit.entityId)
-          : hit.entityType === 'pin'
-            ? await db.getPin(hit.entityId)
-            : await db.getComment(hit.entityId)
+    const row = await fetchEntity(db, hit)
     const html = (row as { contentHtml?: string } | undefined)?.contentHtml
     setPreview({ title: hit.title || `${TYPE_LABELS[hit.entityType]} ${hit.entityId}`, html: html ?? hit.snippet })
   }
@@ -87,6 +107,20 @@ export function LibraryPage() {
           <option value="pin">想法</option>
           <option value="comment">评论</option>
         </select>
+        <input
+          type="date"
+          value={timeFrom}
+          onChange={(e) => setTimeFrom(e.target.value)}
+          title="创建时间起于"
+          className="rounded-lg border border-input bg-background px-3 text-sm"
+        />
+        <input
+          type="date"
+          value={timeTo}
+          onChange={(e) => setTimeTo(e.target.value)}
+          title="创建时间止于"
+          className="rounded-lg border border-input bg-background px-3 text-sm"
+        />
       </div>
       {error && <p className="text-sm text-destructive">{error}</p>}
 
@@ -98,13 +132,28 @@ export function LibraryPage() {
             <ul className="space-y-2">
               {results.map((r) => (
                 <li key={`${r.entityType}-${r.entityId}`}>
-                  <button
-                    className="w-full rounded border border-transparent p-3 text-left hover:border-border hover:bg-accent"
+                  <div
+                    className="w-full cursor-pointer rounded border border-transparent p-3 hover:border-border hover:bg-accent"
                     onClick={() => void openPreview(r)}
                   >
-                    <div className="text-sm font-medium">{r.title || `${TYPE_LABELS[r.entityType]} ${r.entityId}`}</div>
-                    <div className="mt-1 text-xs text-muted-foreground">{r.snippet}</div>
-                  </button>
+                    <div className="flex items-center justify-between">
+                      <span className="text-sm font-medium">
+                        {r.title || `${TYPE_LABELS[r.entityType]} ${r.entityId}`}
+                      </span>
+                      <Link
+                        className="text-xs text-primary underline-offset-2 hover:underline"
+                        to={`/reader/${r.entityType}/${r.entityId}`}
+                        onClick={(e) => e.stopPropagation()}
+                      >
+                        打开阅读
+                      </Link>
+                    </div>
+                    {/* highlightText 输出为转义后文本+mark 标签，可安全内联 */}
+                    <div
+                      className="mt-1 text-xs text-muted-foreground"
+                      dangerouslySetInnerHTML={{ __html: highlightText(r.snippet, extractTerms(query.trim())) }}
+                    />
+                  </div>
                 </li>
               ))}
             </ul>

@@ -23,3 +23,21 @@ ${sanitizeHtml(contentHtml)}
 </html>
 `
 }
+
+/**
+ * 阅读器交互文档：sandbox="allow-scripts"（不含 same-origin → opaque origin 隔离）。
+ * 正文已清洗无脚本；仅注入受信任的选择桥（划词选中文本 postMessage 给父页做标注）。
+ */
+export function buildReaderInteractiveDoc(title: string, contentHtml: string): string {
+  const bridge = `<script>
+document.addEventListener('mouseup', () => {
+  const sel = window.getSelection()
+  const text = sel ? sel.toString().trim() : ''
+  if (text.length >= 2) parent.postMessage({ type: 'zhivault:selection', text }, '*')
+})
+document.addEventListener('message', (e) => {
+  if (e.data && e.data.type === 'zhivault:ping') parent.postMessage({ type: 'zhivault:pong' }, '*')
+})
+</script>`
+  return buildReaderPreviewDoc(title, contentHtml).replace('</body>', `${bridge}</body>`)
+}
