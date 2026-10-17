@@ -9,6 +9,7 @@
   "permissions": [
     "core:default",
     "sql:default",
+    "dialog:default",
     "core:webview:allow-create-webview-window"
   ]
 }

@@ -1,6 +1,27 @@
-import type { ContentStore } from '@/core/store/content-store'
+import type { SaveResult } from '@/core/store/types'
 import type { Fetcher, ZhihuSession } from '../fetcher'
 import type { ImageDownloader, ImageMode } from '../images'
+
+/** 采集器需要的最小仓储面（ContentStore 结构化满足；浏览器演示模式用内存实现） */
+export interface StoreLike {
+  saveAnswer(r: unknown): Promise<SaveResult>
+  saveQuestion(r: unknown): Promise<SaveResult>
+  saveArticle(r: unknown): Promise<SaveResult>
+  savePin(r: unknown): Promise<SaveResult>
+  saveComment(r: unknown): Promise<SaveResult>
+  saveAuthor(r: unknown): Promise<void>
+  saveCollection(r: unknown): Promise<void>
+  replaceCollectionItems(id: string, items: unknown[]): Promise<void>
+  saveColumn(r: unknown): Promise<void>
+  replaceColumnItems(id: string, items: unknown[]): Promise<void>
+  saveTopic(r: unknown): Promise<void>
+  replaceTopicItems(id: string, items: unknown[]): Promise<void>
+  saveActivity(r: unknown): Promise<void>
+  getActivity(id: string): Promise<unknown>
+  getCaptureMeta(taskId: string, key: string): Promise<string | undefined>
+  saveCaptureMeta(taskId: string, key: string, value: string): Promise<void>
+  listComments(entityType: string, entityId: string): Promise<unknown[]>
+}
 
 export interface CollectStats {
   fetched: number
@@ -21,7 +42,7 @@ export interface CollectResult {
 
 export interface CollectorDeps {
   fetcher: Fetcher
-  store: ContentStore
+  store: StoreLike
   /** 游标按任务独立持久化（PRD §0-3） */
   taskId: string
   session?: ZhihuSession

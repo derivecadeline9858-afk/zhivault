@@ -2,6 +2,7 @@ node_modules/
 dist/
 src-tauri/target/
 zhivault-data/
+public/pandoc.wasm
 *.log
 .DS_Store
 Thumbs.db

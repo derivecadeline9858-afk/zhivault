@@ -33,6 +33,7 @@ fn main() {
                 let _ = window.set_focus();
             }
         }))
+        .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_sql::Builder::default().build())
         .manage(AppState {
             data_dir: Mutex::new(data_dir),
@@ -40,7 +41,10 @@ fn main() {
         .invoke_handler(tauri::generate_handler![
             commands::get_app_info,
             commands::get_data_dir,
-            commands::eval_in_webview
+            commands::eval_in_webview,
+            commands::export_write_text,
+            commands::export_write_binary,
+            commands::open_path
         ])
         .run(tauri::generate_context!())
         .expect("error while building tauri application");

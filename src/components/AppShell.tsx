@@ -1,13 +1,19 @@
-import { Download, House, Info, Library, Settings } from 'lucide-react'
+import { CircleUserRound, Download, Gauge, House, Info, Library, Settings } from 'lucide-react'
+import { useState } from 'react'
 import { NavLink, Route, Routes } from 'react-router-dom'
-import { cn } from '@/lib/utils'
+import { LoginDialog } from '@/components/LoginDialog'
 import { AboutPage } from '@/pages/AboutPage'
-import { HomePage } from '@/pages/HomePage'
-import { PlaceholderPage } from '@/pages/PlaceholderPage'
+import { ExportPage } from '@/pages/ExportPage'
+import { LibraryPage } from '@/pages/LibraryPage'
+import { RunPage } from '@/pages/RunPage'
 import { SettingsPage } from '@/pages/SettingsPage'
+import { TasksPage } from '@/pages/TasksPage'
+import { cn } from '@/lib/utils'
+import { sessionStore } from '@/lib/session-store'
 
 const NAV_ITEMS = [
   { to: '/', label: '首页 / 任务', icon: House },
+  { to: '/run', label: '运行', icon: Gauge },
   { to: '/library', label: '书架 / 检索', icon: Library },
   { to: '/export', label: '导出中心', icon: Download },
   { to: '/settings', label: '设置', icon: Settings },
@@ -15,6 +21,9 @@ const NAV_ITEMS = [
 ]
 
 export function AppShell() {
+  const [loginOpen, setLoginOpen] = useState(false)
+  const [loggedIn, setLoggedIn] = useState(sessionStore.loggedIn)
+
   return (
     <div className="flex h-screen bg-background text-foreground">
       <aside className="flex w-52 flex-col border-r border-border bg-card p-3">
@@ -38,16 +47,33 @@ export function AppShell() {
             </NavLink>
           ))}
         </nav>
+        <button
+          id="login-entry"
+          onClick={() => setLoginOpen(true)}
+          className="mt-auto flex items-center gap-2 rounded-lg border border-border px-3 py-2 text-sm text-muted-foreground hover:bg-accent"
+        >
+          <CircleUserRound className="h-4 w-4" />
+          {loggedIn ? '已登录' : '匿名 · 点击登录'}
+        </button>
       </aside>
-      <main className="min-w-0 flex-1 overflow-y-auto">
+      <main className="min-w-0 flex-1 overflow-hidden">
         <Routes>
-          <Route path="/" element={<HomePage />} />
-          <Route path="/library" element={<PlaceholderPage title="书架 / 检索" taskNote="任务 8 实现" />} />
-          <Route path="/export" element={<PlaceholderPage title="导出中心" taskNote="任务 4/5 实现" />} />
+          <Route path="/" element={<TasksPage />} />
+          <Route path="/run" element={<RunPage />} />
+          <Route path="/library" element={<LibraryPage />} />
+          <Route path="/export" element={<ExportPage />} />
           <Route path="/settings" element={<SettingsPage />} />
           <Route path="/about" element={<AboutPage />} />
         </Routes>
       </main>
+      {loginOpen && (
+        <LoginDialog
+          onClose={() => {
+            setLoginOpen(false)
+            setLoggedIn(sessionStore.loggedIn)
+          }}
+        />
+      )}
     </div>
   )
 }

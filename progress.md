@@ -12,7 +12,7 @@
 | 2 | 采集内核 | ✅ 完成 | 四道门全绿；fetch 测试 29 新增全过（合计 80/80）；build 成功 |
 | 3 | 采集器与执行器 | ✅ 完成 | tsc/eslint 0 错误；vitest 118/118（新增 38）；纯 TS 无壳改动 |
 | 4 | 导出引擎 | ✅ 完成 | 四道门全绿；导出测试 22 新增全过（合计 140/140）；build 成功 |
-| 5 | GUI（P0 页面） | ⚪ 未开始 | |
+| 5 | GUI（P0 页面） | ✅ 完成 | 四道门全绿 + E2E 12s 通过（含 pandoc ✅）；品牌露出点复核；zip 16.7MB |
 | 6 | 安全与合规 | ⚪ 未开始 | |
 | 7 | PDF 与时间自定义 | ⚪ 未开始 | |
 | 8 | 检索与阅读器 | ⚪ 未开始 | |
@@ -40,6 +40,13 @@
 - `cargo test` → 2/2 通过（tauri-plugin-sql 编入）
 - `pnpm tauri build` → 成功（release 53.65s，NSIS 3.62MiB，tauri-plugin-sql 编入）
 - 终态复跑：`pnpm test` 51/51、`tsc` 0 错误
+
+### 任务 5（2026-10-17）—— GUI（P0 页面）
+
+- 新增单测：log-redact 14（含敏感键值/URL 参数/多处置脱敏）、run-store 5（状态机/去重/失败隔离/脱敏出口/订阅）、列表查询 2 → 全量 **161/161**
+- `pnpm test:e2e`（Playwright + 系统 Edge）→ **1 passed (11.6s)**：粘贴 URL → 类型识别 chips → 添加任务 → 演示模式运行（五联计数+脱敏日志流）→ 导出中心（epub 勾选）→ 报告 html/epub/json ✅ + markdown/docx ❌ partial_success 语义可见
+- `pnpm tauri build` → 成功（NSIS 15.75MiB；exe 26MB（资产压缩嵌入），便携 zip 实测 **16.7MB < 30MB**——Ruling-36 的旁置 scheme 方案经实测不需要）
+- 品牌露出点复核（新构建 PrintWindow）：点 1 窗口图标 ✓、点 2 splash ✓（头像+知藏 ZhiVault+作者：橙茶星）；点 3/4 组件未改动沿用任务 0 证据
 
 ### 任务 4（2026-10-17）—— 导出引擎
 
@@ -120,3 +127,10 @@
 - **Ruling-28 pandoc-wasm 集成方式**：58MB wasm（gzip 16MB）按需动态 import（首次转换才加载）；测试用真实 pandoc-wasm 但 `@vitest-environment node`（jsdom 的 Blob 缺 arrayBuffer，pandoc-wasm addFile 会崩）；校验职责在 PandocQueue（任何 runner 空输出都判 EXPORT_EMPTY_OUTPUT）。包内无 .d.ts → 自建 `src/types/pandoc-wasm.d.ts` 环境声明。
 - **Ruling-29 ExportSink 边界**：引擎经 `ExportSink`（writeText/writeBinary/exists）落盘，MemorySink 测试；生产 fs 实现随任务 5（依赖 fs 插件 scope）。markdown 的 images/→assets/ 改写与 referencedAssets 清单由引擎产出，资产物理搬运归导出中心。
 - **Ruling-30 清洗器为正则实现**：sanitizeHtml 覆盖 script/on*/javascript: 三类（§8-4 验证样本），非完整 HTML 解析器；任务 6 安全专项如需更强保障可换解析器实现（接口不变）。
+- **Ruling-31 进度事件与 Tauri 事件**：任务 5 采集在 WebView TS 层执行，进度用前端订阅总线（run-store）；PRD 所说"Tauri 事件推进度"在任务 7 后台监控（Rust 定时器唤醒）接入壳事件通道。代价：窗口最小化时 WebView 节流可能影响长时间任务，任务 7 一并解决。
+- **Ruling-32 浏览器演示模式**：无 Tauri 时 RunStore 用 BrowserDemoStore（StoreLike 内存实现，采集器最小仓储面已抽象）+ 演示 fetcher；导出中心落盘降级为内存 Sink 并在报告标注。E2E 由此可跑通全链路。代价：演示数据不计入真实库。
+- **Ruling-33 pandoc-wasm 浏览器加载**：pandoc-wasm browser 入口 `import('./pandoc.wasm')` 期望 webpack 式 URL 导出，vite dev/build 默认不认 → 浏览器内 pandoc 系格式失败（错误如实入报告，partial 语义 E2E 顺带验证）。打包期方案（vite wasm 插件或自管 wasm URL）列任务 10；应用内单测已用真实 pandoc-wasm 覆盖转换正确性。代价：应用内 MD/DOCX 导出在任务 10 前不可用。
+- **Ruling-34 MVP 书源**：导出书源 = 全部合并 + 按类型分书（回答/文章/想法/问题）；任务级分书需任务→实体映射表，随任务 8 变更报告/书架一并扩展。代价：暂时不能"按任务合并成书"。
+- **Ruling-35 登录态 MVP**：Cookie 仅存内存（关闭即清），DPAPI 加密落盘 + 注销全链路属任务 6；匿名 d_c0 自动获取同任务 6。扫码登录入口灰显（需知乎网页端配合，Cookie 粘贴先行）。
+- **Ruling-36 pandoc.wasm 落地方式（修订 Ruling-33）**：vite 预检插件把依赖内裸 `import('./pandoc.wasm')` 改写为指向 `/pandoc.wasm` 的 URL 导出；wasm 经 `public/` 进 dist（postinstall 自动从依赖复制，58MB 二进制不入库 .gitignore）。dev 与生产构建均验证可用，E2E 的 markdown ✅。嵌入后 exe 26MB / 便携 zip 16.7MB（资产压缩嵌入），<30MB 目标保持——原旁置 scheme 预案撤销。
+- **Ruling-37 StoreLike 抽象**：采集器仓储面抽象为 StoreLike（unknown 参数 + 方法双变体兼容），浏览器演示模式用 BrowserDemoStore 内存实现，应用内就绪后 RunStore.setStore 切换真实便携库。代价：StoreLike 参数为 unknown，调用点类型安全靠 ContentStore 真实路径保障。

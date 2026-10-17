@@ -1,5 +1,5 @@
 import { ZhiVaultError } from '@/core/fetch/errors'
-import type { ContentStore } from '@/core/store/content-store'
+import type { StoreLike } from '@/core/zhihu/collectors'
 import { collectAnswer, collectArticle, collectCollection, collectColumn, collectPin, collectQuestion, collectTopic, collectUser } from '@/core/zhihu/collectors'
 import type { CollectorOptions, CollectResult, CollectStats } from '@/core/zhihu/collectors'
 import { addStats, emptyStats } from '@/core/zhihu/collectors/shared'
@@ -40,7 +40,7 @@ const COLLECTORS = {
 
 export interface BatchExecutorDeps {
   fetcher: Fetcher
-  store: ContentStore
+  store: StoreLike
   session: ZhihuSession
   /** 默认 1；Pro 上限 3（PRD §5.3：总速率恒定，并发只影响穿插顺序） */
   maxConcurrency?: number

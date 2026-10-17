@@ -1,5 +1,5 @@
-import type { ContentStore } from '@/core/store/content-store'
 import { mapAnswerRecord, mapArticleRecord, mapAuthor, mapPinRecord, mapQuestionRecord } from '../mappers'
+import type { StoreLike } from './types'
 import { API_V4, applyImages, bump } from './shared'
 import { collectComments } from './comments'
 import type { CollectorFn } from './types'
@@ -7,7 +7,7 @@ import { emptyStats } from './types'
 
 type Raw = Record<string, unknown>
 
-async function saveEmbeddedQuestion(store: ContentStore, raw: unknown): Promise<void> {
+async function saveEmbeddedQuestion(store: StoreLike, raw: unknown): Promise<void> {
   const q = raw as Raw | undefined
   if (!q?.id) return
   const author = mapAuthor(q.author)

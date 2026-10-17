@@ -619,6 +619,32 @@ export class ContentStore {
     await this.exec.run('DELETE FROM capture_meta WHERE task_id = ? AND key = ?', [taskId, key])
   }
 
+  // ---------- 列表查询（书架/导出中心用，按收录时间倒序分页） ----------
+
+  private async listTable<T>(table: TableName, offset: number, limit: number): Promise<T[]> {
+    const rows = await this.exec.all<Record<string, string | number | null>>(
+      `SELECT * FROM ${quoteTable(table)} ORDER BY captured_at DESC, id DESC LIMIT ? OFFSET ?`,
+      [limit, offset],
+    )
+    return rows as unknown as T[]
+  }
+
+  listAnswers(offset = 0, limit = 50) {
+    return this.listTable<Record<string, string | number | null>>('answer', offset, limit)
+  }
+
+  listArticles(offset = 0, limit = 50) {
+    return this.listTable<Record<string, string | number | null>>('article', offset, limit)
+  }
+
+  listPins(offset = 0, limit = 50) {
+    return this.listTable<Record<string, string | number | null>>('pin', offset, limit)
+  }
+
+  listQuestions(offset = 0, limit = 50) {
+    return this.listTable<Record<string, string | number | null>>('question', offset, limit)
+  }
+
   // ---------- FTS 检索 ----------
 
   async searchContent(
