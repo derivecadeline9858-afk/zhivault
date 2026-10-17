@@ -17,7 +17,7 @@
 | 7 | PDF 与时间自定义 | ✅ 完成 | 四道门全绿（204/204 + cargo 11/11 含真实 Edge 打印 + build + E2E） |
 | 8 | 检索与阅读器 | ✅ 完成 | 门全绿：vitest 223/223（高亮/diff 快照/跨版本锚定/迁移 v3）；E2E 15s |
 | 9 | AI 中心 | ✅ 完成 | 四道门全绿（238/238 + cargo 11/11 + build + E2E 15.6s） |
-| 10 | 发布 | ⚪ 未开始 | |
+| 10 | 发布 | ✅ 完成 | 产物 16.95MB <30MB；audit 门禁实测修复后全绿；露出点 5-6 核对通过 |
 
 ## 环境基线（§9.1 自检）
 
@@ -40,6 +40,16 @@
 - `cargo test` → 2/2 通过（tauri-plugin-sql 编入）
 - `pnpm tauri build` → 成功（release 53.65s，NSIS 3.62MiB，tauri-plugin-sql 编入）
 - 终态复跑：`pnpm test` 51/51、`tsc` 0 错误
+
+### 任务 10（2026-10-17）—— 发布
+
+- README.md：中文 · 署名橙茶星 ×3 · SmartScreen 提示+声誉链接 · SHA-256 校验命令 · 合规声明 · MIT
+- `.github/workflows/release.yml`：tag 触发 → **audit 门禁**（显式官方 registry，因 npmmirror 无 audit 端点）→ 质量门 → tauri build → portable zip + SHA-256 + **<30MB 门禁** → artifact + Release
+- 官网单页 `docs/website/index.html`（头像+署名+安全承诺，独立单文件）；投稿稿 ×2（Appinn/V2EX，tone 经 PRD §3 禁词检查）；`docs/用户手册.md`（10 章 + FAQ）；`CHANGELOG.md` v0.1.0
+- **CI 等价步骤本地实测**：`pnpm audit --registry npmjs --audit-level=high` 初跑 **2 critical（tinypool）阻塞** → 修复：vitest 3.2.7→4.1.12（tinypool 1.x 无补丁版，唯有升级），238/238 零测试改动复绿 → 复跑 audit **No known vulnerabilities found**
+- 产物：`zhivault-0.1.0-x64.zip` = **16.95MB < 30MB** ✓，SHA-256 `8ffaf1a7…2828f6` 落盘
+- 品牌露出点核对：点 5（HTML 页脚/EPUB dc:creator）测试断言锁定 ✓；点 6（README/官网/更新日志）署名计数 3/3/2 ✓
+- tsc 0 / eslint 0 错误 1 warning；**首发推送到 GitHub 后首跑 Actions 为最终验证（本地已执行其全部步骤）**
 
 ### 任务 9（2026-10-17）—— AI 中心（P1）
 
@@ -195,3 +205,5 @@
 - **Ruling-52 AI 端点 SSRF 放行**：§8-3 白名单（知乎+更新域）与 §5.1 自带 DeepSeek/OpenAI Key 存在张力；决策——用户在 AI 中心显式配置的 baseUrl 主机加入守卫放行（配置即授权，localStorage 持久化），TS 裁决兜底该主机，Rust guard_url 拒绝后二次比对。代价：白名单的"不可绕过"出现用户配置例外，属产品语义而非漏洞。
 - **Ruling-53 AI Key 独立密文文件**：ai-key.bin 与 credentials.bin 分离（不同生命周期：注销凭据不清 AI Key）；Rust 复用 credential::save/load/clear，三命令薄封装。
 - **Ruling-54 摘要输出容错**：模型未按 JSON 输出时降级为截断纯文本 + 空标签（不判失败，可用性优先）；JSON 解析剥 ```json 围栏；摘要硬上限 120 字、标签 ≤8。
+- **Ruling-55 audit 门禁驱动 vitest 4 升级**：npmmirror 无 audit 端点（workflow 显式走官方 registry）；初跑 2 个 critical（tinypool 1.x 无补丁版）阻塞发布，修复 = vitest 3.2.7→4.1.12 大版本升级，238/238 零测试改动复绿（§9.3 真修而非绕过）；复跑 audit 全绿。代价：vitest 5 已发布但非必要不追新。
+- **Ruling-56 发布占位链接**：README/官网/关于页仓库链接均为 `github.com/PLACEHOLDER/zhivault` 占位——真实仓库创建后全局替换并填入 `REPO_URL`（任务 0 Ruling-3 挂账项随发布闭环）。

@@ -1,0 +1,72 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>知藏 ZhiVault —— 把知乎装进自己口袋</title>
+<meta name="description" content="知乎内容存档导出桌面软件：免登录采集、增量备份、版本历史 diff、全文检索、标注、七格式导出。作者：橙茶星">
+<style>
+:root{--emerald:#059669;--ink:#111827;--muted:#6b7280;--bg:#ffffff;--soft:#f3f4f6}
+*{margin:0;padding:0;box-sizing:border-box}
+body{font-family:'Source Han Sans SC','Noto Sans CJK SC','Microsoft YaHei',system-ui,sans-serif;color:var(--ink);background:var(--bg);line-height:1.75}
+.wrap{max-width:960px;margin:0 auto;padding:0 1.5rem}
+.hero{padding:5rem 0 3rem;text-align:center;background:linear-gradient(180deg,#ecfdf5, #ffffff)}
+.hero img{width:120px;height:120px;border-radius:24px;box-shadow:0 10px 30px rgba(5,150,105,.25)}
+.hero h1{font-size:2.2rem;margin:1.2rem 0 .4rem}
+.hero .slogan{color:var(--emerald);font-weight:600;font-size:1.1rem}
+.hero .by{color:var(--muted);font-size:.9rem;margin-top:.8rem}
+.cta{display:inline-block;margin-top:1.6rem;background:var(--emerald);color:#fff;padding:.8rem 2.2rem;border-radius:8px;text-decoration:none;font-weight:600}
+.note{margin-top:1rem;font-size:.8rem;color:var(--muted)}
+section{padding:3rem 0}
+h2{font-size:1.4rem;margin-bottom:1.2rem;border-left:4px solid var(--emerald);padding-left:.8rem}
+.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:1rem}
+.card{background:var(--soft);border-radius:8px;padding:1.2rem}
+.card h3{font-size:1rem;margin-bottom:.4rem}
+.card p{font-size:.9rem;color:var(--muted)}
+footer{border-top:1px solid #e5e7eb;padding:2.5rem 0;text-align:center;color:var(--muted);font-size:.85rem}
+a{color:var(--emerald)}
+</style>
+</head>
+<body>
+<header class="hero">
+  <div class="wrap">
+    <img src="avatar.png" alt="知藏头像">
+    <h1>知藏 ZhiVault</h1>
+    <p class="slogan">把知乎装进自己口袋</p>
+    <p class="by">作者：橙茶星 · 免费 · 开源核心引擎（MIT） · 绿色免安装 &lt;30MB</p>
+    <a class="cta" href="https://github.com/PLACEHOLDER/zhivault/releases">下载最新版</a>
+    <p class="note">首次运行如遇 SmartScreen 提示：更多信息 → 仍要运行。Release 附 SHA-256 可校验。</p>
+  </div>
+</header>
+
+<section><div class="wrap">
+  <h2>功能</h2>
+  <div class="grid">
+    <div class="card"><h3>免登录采集</h3><p>回答/文章/想法/整问题/收藏夹/专栏/话题/用户主页，批量粘贴整批启动；匿名可采公开内容，登录可选。</p></div>
+    <div class="card"><h3>增量 + 断点续抓</h3><p>二次运行只抓新增与更新；中断后从游标恢复，已完成不重复。</p></div>
+    <div class="card"><h3>版本历史 diff</h3><p>内容被修改自动留旧版，任选两版本并排对比；被删内容本地留档。</p></div>
+    <div class="card"><h3>评论树</h3><p>回复层级完整导出，支持赞数筛选——对手没有的拼图。</p></div>
+    <div class="card"><h3>全文检索 + 标注</h3><p>FTS5 中文检索高亮；阅读器 sandbox 隔离渲染，四色高亮批注，跨版本指纹锚定。</p></div>
+    <div class="card"><h3>七格式导出</h3><p>HTML/EPUB/Markdown/TXT/DOCX/PDF/JSON，RAG 友好；Obsidian Vault 一键导出。</p></div>
+    <div class="card"><h3>定时监控</h3><p>cron 预设/自定义 + 运行时段 + 补跑策略，命中更新系统通知。</p></div>
+    <div class="card"><h3>AI 摘要标签</h3><p>自带 DeepSeek/OpenAI 兼容 Key，生成记录可回溯可导出。</p></div>
+  </div>
+</div></section>
+
+<section><div class="wrap">
+  <h2>安全承诺</h2>
+  <div class="grid">
+    <div class="card"><h3>凭据 DPAPI 加密</h3><p>本机加密落盘，注销一键清除；日志全链路脱敏。</p></div>
+    <div class="card"><h3>更新包签名校验</h3><p>Ed25519 + SHA-256 双校验，篡改必拒；更新请求零凭据。</p></div>
+    <div class="card"><h3>本地优先</h3><p>数据全在本地便携目录，整目录复制即迁移；不做云同步。</p></div>
+  </div>
+</div></section>
+
+<footer>
+  <div class="wrap">
+    <p>知藏 ZhiVault · 作者：橙茶星</p>
+    <p><a href="https://github.com/PLACEHOLDER/zhivault">GitHub</a> · 仅限个人学习存档 · 内置限速 · 不触碰付费内容</p>
+  </div>
+</footer>
+</body>
+</html>
