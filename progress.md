@@ -11,7 +11,7 @@
 | 1 | 数据层 | ✅ 完成 | 四道门全绿；store 测试 34 新增全过（合计 51/51）；build 成功 |
 | 2 | 采集内核 | ✅ 完成 | 四道门全绿；fetch 测试 29 新增全过（合计 80/80）；build 成功 |
 | 3 | 采集器与执行器 | ✅ 完成 | tsc/eslint 0 错误；vitest 118/118（新增 38）；纯 TS 无壳改动 |
-| 4 | 导出引擎 | ⚪ 未开始 | |
+| 4 | 导出引擎 | ✅ 完成 | 四道门全绿；导出测试 22 新增全过（合计 140/140）；build 成功 |
 | 5 | GUI（P0 页面） | ⚪ 未开始 | |
 | 6 | 安全与合规 | ⚪ 未开始 | |
 | 7 | PDF 与时间自定义 | ⚪ 未开始 | |
@@ -40,6 +40,16 @@
 - `cargo test` → 2/2 通过（tauri-plugin-sql 编入）
 - `pnpm tauri build` → 成功（release 53.65s，NSIS 3.62MiB，tauri-plugin-sql 编入）
 - 终态复跑：`pnpm test` 51/51、`tsc` 0 错误
+
+### 任务 4（2026-10-17）—— 导出引擎
+
+- RED：`tests/export` 8 文件全败 → 实现后 **22/22**（pandoc 用例为真实 pandoc-wasm 集成）
+- 全量 `pnpm test` → 29 文件 **140/140**
+- `pnpm tsc` → 0 错误（修 paths 正则、epub 未用参数、PandocQueue 校验职责）
+- `pnpm eslint` → 0 错误 1 warning
+- `pnpm build`（vite）→ 通过；pandoc-wasm 懒加载块暂未入包（导出模块未被入口引用，任务 5 接线后随动态 import 产出）
+- `pnpm tauri build` → 成功（NSIS 3.64MiB）
+- 验收映射：单书格式（六格式成功 + PDF partial）✓；Obsidian vault golden test ✓（文件树+内容逐字比对）；partial 语义 ✓；路径穿越 ✓；EPUB mimetype 首条 stored + dc:creator 署名 ✓；pandoc 串行队列 + 空输出判败 + files 二进制回传 ✓
 
 ### 任务 3（2026-10-17）—— 采集器与执行器
 
@@ -105,3 +115,8 @@
 - **Ruling-23 虚拟时钟测试陷阱**：sleep 内直接推进全局时钟会让"后续首个 acquire"读到推进后的时间而重复消费同一时段令牌（假 0 间隔）；必须定时器队列 + 微任务排干（1000 跳）+ 最早到期推进的迷你调度器。只影响测试设施，产品代码无碍。
 - **Ruling-24 图片池生产接线延后**：`ImageDownloader`/`exists` 为注入边界（下载经传输层、exists 查图片池目录）；生产 fs 下载器依赖 fs 插件 scope，随任务 5 GUI 接线（PRD §7.1 壳 FS 权限）。代价：图片本地化端到端在任务 5 后可用。
 - **Ruling-25 API 端点为契约常量**：所有 v4 端点/参数名为 mock 契约（`API_V4` 常量集中），真实联调（任务 3 后段/任务 5）按线上响应校准 include 字段与分页字段。
+- **Ruling-26 任务 4 范围 = 六格式 + Obsidian + 标注集**：PRD §10-4 验收写"单书七格式"，但 §10-7 明确 PDF（Edge 无头打印）属任务 7；决策本任务 PDF 一律 `PDF_DEFERRED` partial（engine 留注入位，任务 7 注册 renderer）。代价：无。
+- **Ruling-27 导出 HTML 零脚本**：PRD §10-4"HTML 渲染（代码高亮/KaTeX/清除脚本）"与安全要求（§8-4 导出无脚本）并存；决策导出文件内嵌零 `<script>`（CDN CSS 美化），KaTeX/highlight.js 渲染仅发生在应用内阅读器，导出文件离线可读。代价：导出 HTML 中高亮/公式为原文形态，阅读器内才有增强渲染。
+- **Ruling-28 pandoc-wasm 集成方式**：58MB wasm（gzip 16MB）按需动态 import（首次转换才加载）；测试用真实 pandoc-wasm 但 `@vitest-environment node`（jsdom 的 Blob 缺 arrayBuffer，pandoc-wasm addFile 会崩）；校验职责在 PandocQueue（任何 runner 空输出都判 EXPORT_EMPTY_OUTPUT）。包内无 .d.ts → 自建 `src/types/pandoc-wasm.d.ts` 环境声明。
+- **Ruling-29 ExportSink 边界**：引擎经 `ExportSink`（writeText/writeBinary/exists）落盘，MemorySink 测试；生产 fs 实现随任务 5（依赖 fs 插件 scope）。markdown 的 images/→assets/ 改写与 referencedAssets 清单由引擎产出，资产物理搬运归导出中心。
+- **Ruling-30 清洗器为正则实现**：sanitizeHtml 覆盖 script/on*/javascript: 三类（§8-4 验证样本），非完整 HTML 解析器；任务 6 安全专项如需更强保障可换解析器实现（接口不变）。
