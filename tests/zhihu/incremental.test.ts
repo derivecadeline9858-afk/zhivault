@@ -77,4 +77,36 @@ describe('增量 diff + 版本入库 + 断点续抓（PRD §10-3 验收）', () 
     expect((await store.getAnswer('x1'))?.id).toBe('x1')
     expect((await store.getAnswer('x2'))?.id).toBe('x2')
   })
+
+  it('时间窗与游标叠加：同一份数据按不同窗口过滤出不同子集（PRD §0-2 正交语义）', async () => {
+    const mk = (id: string, created: string) => ({
+      id,
+      content: `<p>${id}</p>`,
+      created_time: Math.floor(new Date(created).getTime() / 1000),
+      voteup_count: 0,
+      comment_count: 0,
+      author: { url_token: 'u', name: 'u' },
+    })
+    const page = {
+      data: [mk('x1', '2026-01-01T00:00:00Z'), mk('x2', '2026-06-01T00:00:00Z'), mk('x3', '2026-12-01T00:00:00Z')],
+      paging: { is_end: true },
+    }
+    const fetcher: Fetcher = {
+      async fetchJson(url: string) {
+        if (url.includes('/answers')) return page
+        return QUESTION_META
+      },
+    }
+    const r1 = await collectQuestion({ fetcher, store, taskId: 't-win' }, { id: 'q9' }, { timeWindow: { createdAfter: '2026-03-01' } })
+    expect(r1.stats.fetched).toBe(3)
+    expect(await store.getAnswer('x1')).toBeUndefined()
+    expect((await store.getAnswer('x2'))?.id).toBe('x2')
+    expect((await store.getAnswer('x3'))?.id).toBe('x3')
+
+    // 时间窗只决定"采哪些"，不删除已入库内容（PRD §0-2 正交语义）
+    const r2 = await collectQuestion({ fetcher, store, taskId: 't-win' }, { id: 'q9' }, { timeWindow: { createdAfter: '2026-01-01', createdBefore: '2026-08-01' } })
+    expect(r2.stats.fetched).toBe(3)
+    expect((await store.getAnswer('x1'))?.id).toBe('x1')
+    expect((await store.getAnswer('x3'))?.id).toBe('x3')
+  })
 })

@@ -645,6 +645,50 @@ export class ContentStore {
     return this.listTable<Record<string, string | number | null>>('question', offset, limit)
   }
 
+  // ---------- 监控计划调度（迁移 v2，PRD §6.2 页 8） ----------
+
+  async saveSchedule(input: {
+    id: string
+    name: string
+    spec: unknown
+    enabled?: boolean
+  }): Promise<void> {
+    const now = nowIso()
+    await this.exec.run(
+      'INSERT INTO schedule (id, name, spec_json, enabled, created_at, updated_at) VALUES (?,?,?,?,?,?) ON CONFLICT(id) DO UPDATE SET name=excluded.name, spec_json=excluded.spec_json, enabled=excluded.enabled, updated_at=excluded.updated_at',
+      [input.id, input.name, JSON.stringify(input.spec), input.enabled === false ? 0 : 1, now, now],
+    )
+  }
+
+  async listSchedules(): Promise<{ id: string; name: string; spec: unknown; enabled: boolean; lastRunAt: string | null }[]> {
+    const rows = await this.exec.all<Record<string, string | number | null>>(
+      'SELECT * FROM schedule ORDER BY created_at ASC',
+    )
+    return rows.map((r) => ({
+      id: String(r.id),
+      name: String(r.name),
+      spec: JSON.parse(String(r.spec_json)) as unknown,
+      enabled: Number(r.enabled) === 1,
+      lastRunAt: r.last_run_at == null ? null : String(r.last_run_at),
+    }))
+  }
+
+  async setScheduleEnabled(id: string, enabled: boolean): Promise<void> {
+    await this.exec.run('UPDATE schedule SET enabled = ?, updated_at = ? WHERE id = ?', [
+      enabled ? 1 : 0,
+      nowIso(),
+      id,
+    ])
+  }
+
+  async setScheduleLastRun(id: string, at: string): Promise<void> {
+    await this.exec.run('UPDATE schedule SET last_run_at = ?, updated_at = ? WHERE id = ?', [at, nowIso(), id])
+  }
+
+  async deleteSchedule(id: string): Promise<void> {
+    await this.exec.run('DELETE FROM schedule WHERE id = ?', [id])
+  }
+
   // ---------- FTS 检索 ----------
 
   async searchContent(

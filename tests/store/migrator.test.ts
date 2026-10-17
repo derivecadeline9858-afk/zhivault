@@ -1,5 +1,6 @@
 import { describe, expect, it } from 'vitest'
 import { createTestExecutor } from './helpers'
+import { MIGRATIONS } from '@/core/store/migrator'
 
 const SIXTEEN_TABLES = [
   'answer',
@@ -39,8 +40,8 @@ describe('迁移器（DDL 单一来源 + 版本记录）', () => {
     const { migrate } = await import('@/core/store/migrator')
     await migrate(exec)
     await migrate(exec)
-    const rows = await exec.all<{ version: number }>('SELECT version FROM _migrations')
-    expect(rows).toEqual([{ version: 1 }])
+    const rows = await exec.all<{ version: number }>('SELECT version FROM _migrations ORDER BY version')
+    expect(rows).toEqual(MIGRATIONS.map((m) => ({ version: m.version })))
   })
 
   it('迁移后可建外键依赖的级联数据（foreign_keys 开启时）', async () => {

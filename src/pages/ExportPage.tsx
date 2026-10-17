@@ -3,6 +3,7 @@ import { useEffect, useState } from 'react'
 import { Button } from '@/components/ui/button'
 import type { BookSource, ExportFormat, ExportReport } from '@/core/export'
 import { ExportEngine } from '@/core/export'
+import { createEdgePdfRenderer } from '@/core/export/pdf-renderer'
 import { createRustSink } from '@/core/export/rust-sink'
 import { buildBookFromStore, getDb } from '@/lib/db'
 import { loadExportHistory, pushExportHistory, type ExportHistoryEntry } from '@/lib/export-history'
@@ -122,7 +123,11 @@ export function ExportPage() {
         else if (!outputDir) setDemoNote('未选择输出目录：文件写入内存，报告如下')
       }
 
-      const engine = new ExportEngine({ sink, appVersion: '0.1.0' })
+      const engine = new ExportEngine({
+        sink,
+        appVersion: '0.1.0',
+        pdfRenderer: inTauri && outputDir ? createEdgePdfRenderer(outputDir) : undefined,
+      })
       const r = await engine.exportBook(book, formats)
       setReport(r)
       setHistory(

@@ -14,7 +14,7 @@
 | 4 | 导出引擎 | ✅ 完成 | 四道门全绿；导出测试 22 新增全过（合计 140/140）；build 成功 |
 | 5 | GUI（P0 页面） | ✅ 完成 | 四道门全绿 + E2E 12s 通过（含 pandoc ✅）；品牌露出点复核；zip 16.7MB |
 | 6 | 安全与合规 | ✅ 完成 | 四道门全绿（vitest 180/180 + cargo 10/10 + build + E2E 含协议门） |
-| 7 | PDF 与时间自定义 | ⚪ 未开始 | |
+| 7 | PDF 与时间自定义 | ✅ 完成 | 四道门全绿（204/204 + cargo 11/11 含真实 Edge 打印 + build + E2E） |
 | 8 | 检索与阅读器 | ⚪ 未开始 | |
 | 9 | AI 中心 | ⚪ 未开始 | |
 | 10 | 发布 | ⚪ 未开始 | |
@@ -40,6 +40,15 @@
 - `cargo test` → 2/2 通过（tauri-plugin-sql 编入）
 - `pnpm tauri build` → 成功（release 53.65s，NSIS 3.62MiB，tauri-plugin-sql 编入）
 - 终态复跑：`pnpm test` 51/51、`tsc` 0 错误
+
+### 任务 7（2026-10-17）—— PDF 与时间自定义
+
+- 调度器：16 用例全过（cron 5 字段/预设/间隔/运行时段含跨午夜/补跑 on_start 计数与边界/禁用）
+- 时间窗 × 游标叠加：3 回答按窗口过滤出不同子集，已入库不受后续窗口影响（PRD §0-2 正交语义实测）
+- 迁移 v2 `schedule` 表 + 仓储 CRUD/启停/lastRun（2 用例）；migrator 幂等断言升级为跟随 MIGRATIONS
+- PDF：引擎 renderer 注入（无渲染器保持 PDF_DEFERRED partial）；**Rust `print_pdf` 用真实 Edge 无头打印出 %PDF 非空文件（自动跳过无 Edge 环境）**
+- 通知：RunStore 命中（新增+更新>0）触发系统通知（tauri-plugin-notification，零命中不通知，2 用例）
+- 全量 `pnpm test` → 41 文件 **204/204**；tsc/eslint 0 错误；`cargo test` **11/11**（独立 profile 修复后 Edge 实测 1.19s 通过）；`pnpm tauri build` 成功（NSIS 15.91MiB）；E2E 通过（15.3s；与后台构建并发时一度抖动，独立复跑绿——记入 Ruling-47）
 
 ### 任务 6（2026-10-17）—— 安全与合规
 
@@ -153,3 +162,8 @@
 - **Ruling-40 windows crate 0.61 API**：DPAPI 结构为 `CRYPT_INTEGER_BLOB`（DATA_BLOB 已更名），`LocalFree` 在 `Win32::Foundation`。
 - **Ruling-41 TS 5.9 BufferSource 收窄**：WebCrypto 入参要求 `ArrayBufferView<ArrayBuffer>`，业务侧 `Uint8Array`（ArrayBufferLike）需 `as unknown as BufferSource` 桥接；已在 updater 统一处理。
 - **Ruling-42 协议同意持久化**：localStorage 键 `zhivault.agreement.v1`（含版本号），协议内容变更时递增版本重新征求；E2E 全新配置每次走完整协议门。
+- **Ruling-43 PDF 走 Edge CLI 而非 puppeteer-core**：PRD §5.5 写 puppeteer-core，但它需 Node 运行时（应用为 WebView 架构）；等价方案 = Rust 探测 Edge 路径 + `--headless --print-to-pdf` 无头打印（零新增重依赖），缺失时 `PDF_NO_EDGE` 记 partial。验收"有 Edge 环境生成非空 PDF"以 Rust 实测用例落地（无 Edge 自动跳过）。
+- **Ruling-44 调度持久化走迁移 v2**：schedule 表经 migrator 增量落地（便携目录迁移不丢）；调度循环为应用运行期 setInterval 轮询（1 分钟 tick）——应用关闭时的 OS 级唤醒不在本轮（PRD 未要求 Windows 计划任务集成，任务 10 发布时可评估）。
+- **Ruling-45 补跑边界语义**：`missedRuns` 计 (lastRun, now) 严格开区间——当前时刻的触发归 tick 处理，避免补跑与正常触发重复执行；时段外错过不计入补跑。
+- **Ruling-46 日期解析混合语义**：jsdom 下 `Date.parse('YYYY-MM-DD')` 按 UTC、`new Date('YYYY-MM-DDTHH:mm:ss')` 按本地——测试数据必须带显式 `Z`；inTimeWindow 实现不变（业务侧窗口日期按 UTC 午夜解释，已记档）。
+- **Ruling-47 Edge 无头打印隔离 profile**：默认 profile 的 Edge CLI 会挂接到用户正在运行的 Edge 实例导致 `status()` 永久阻塞（22 个残留进程实证）；必须 `--user-data-dir=<独立目录>` + `--no-first-run` 等隔离参数。E2E 与重型后台构建并发时可能抖动（本机实证一次超时、独立复跑绿），验收以独立运行结果为准。

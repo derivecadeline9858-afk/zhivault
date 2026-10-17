@@ -41,7 +41,13 @@ export class ExportEngine {
   private readonly pandoc: PandocRunner
 
   constructor(
-    private readonly deps: { sink: ExportSink; appVersion: string; pandoc?: PandocRunner },
+    private readonly deps: {
+      sink: ExportSink
+      appVersion: string
+      pandoc?: PandocRunner
+      /** 任务 7 注入：Edge 无头打印；未注入时 PDF 记 PDF_DEFERRED partial */
+      pdfRenderer?: (book: BookSource) => Promise<string[]>
+    },
   ) {
     this.pandoc = new PandocQueue(deps.pandoc ?? createPandocRunner())
   }
@@ -140,8 +146,12 @@ export class ExportEngine {
         await this.deps.sink.writeText(path, JSON.stringify(data, null, 2))
         return [path]
       }
-      case 'pdf':
-        throw new ZhiVaultError(PDF_DEFERRED, 'PDF_DEFERRED：PDF 导出由任务 7 接入（系统 Edge 无头打印）')
+      case 'pdf': {
+        if (!this.deps.pdfRenderer) {
+          throw new ZhiVaultError(PDF_DEFERRED, 'PDF_DEFERRED：当前环境未注册 PDF 渲染器（应用内经系统 Edge 打印）')
+        }
+        return this.deps.pdfRenderer(book)
+      }
     }
   }
 }

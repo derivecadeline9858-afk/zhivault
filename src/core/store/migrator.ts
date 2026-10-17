@@ -1,4 +1,5 @@
 import schema from './schema.sql?raw'
+import v2Schedule from './migrations/v2-schedule.sql?raw'
 import type { SqlExecutor } from './sql-executor'
 
 export interface Migration {
@@ -8,7 +9,10 @@ export interface Migration {
 }
 
 /** 迁移清单：版本号递增，禁止修改已发布的迁移内容，只能追加 */
-export const MIGRATIONS: Migration[] = [{ version: 1, name: 'initial-schema', sql: schema }]
+export const MIGRATIONS: Migration[] = [
+  { version: 1, name: 'initial-schema', sql: schema },
+  { version: 2, name: 'schedule-table', sql: v2Schedule },
+]
 
 /** 将迁移 SQL 切为单条语句执行（DDL 无过程体，按分号切分安全） */
 function splitStatements(sql: string): string[] {

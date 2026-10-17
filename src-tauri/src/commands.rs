@@ -139,6 +139,69 @@ pub fn guard_url(url: String) -> Result<(), String> {
     }
 }
 
+/// 探测系统 Edge 安装路径（PRD §7.5 detect_edge）
+#[tauri::command]
+pub fn detect_edge() -> Option<String> {
+    for path in [
+        r"C:\Program Files (x86)\Microsoft\Edge\Application\msedge.exe",
+        r"C:\Program Files\Microsoft\Edge\Application\msedge.exe",
+    ] {
+        if std::path::Path::new(path).exists() {
+            return Some(path.to_string());
+        }
+    }
+    None
+}
+
+/// Edge 无头打印 PDF（PRD §5.5：缺失降级由前端记 partial）。
+/// html 写入 root/<bookDir>/pdf/.print.html，打印后删除临时文件。
+#[tauri::command]
+pub fn print_pdf(root: String, book_dir: String, html: String) -> Result<String, String> {
+    let edge = detect_edge().ok_or("PDF_NO_EDGE：未检测到系统 Edge，无法打印 PDF")?;
+    let pdf_dir_rel = format!("{book_dir}/pdf");
+    let tmp_rel = format!("{pdf_dir_rel}/.print.html");
+    export_write_text(root.clone(), tmp_rel.clone(), html)?;
+
+    let root_p = std::path::Path::new(&root)
+        .canonicalize()
+        .map_err(|e| format!("输出根目录不可达：{e}"))?;
+    let tmp_full = root_p.join(&tmp_rel);
+    let pdf_rel = format!("{pdf_dir_rel}/{}.pdf", book_dir);
+    let pdf_full = root_p.join(&pdf_rel);
+
+    let url = format!("file:///{}", tmp_full.to_string_lossy().replace('\\', "/"));
+    let out = format!("--print-to-pdf={}", pdf_full.to_string_lossy());
+    // 独立 profile 目录：避免挂接到用户正在运行的 Edge 实例导致阻塞
+    let profile_dir = root_p.join(format!("{pdf_dir_rel}/.edge-profile-{}", std::process::id()));
+    let _ = std::fs::create_dir_all(&profile_dir);
+    let profile = format!("--user-data-dir={}", profile_dir.to_string_lossy());
+    let status = std::process::Command::new(&edge)
+        .args([
+            "--headless",
+            "--disable-gpu",
+            "--no-first-run",
+            "--no-default-browser-check",
+            "--disable-extensions",
+            "--disable-sync",
+            "--no-pdf-header-footer",
+            &profile,
+            &out,
+            &url,
+        ])
+        .status()
+        .map_err(|e| format!("Edge 启动失败：{e}"))?;
+    let _ = std::fs::remove_dir_all(&profile_dir);
+    let _ = std::fs::remove_file(&tmp_full);
+    if !status.success() {
+        return Err(format!("Edge 打印失败（exit {:?}）", status.code()));
+    }
+    match std::fs::metadata(&pdf_full) {
+        Ok(m) if m.len() > 1024 => Ok(pdf_rel),
+        Ok(m) => Err(format!("PDF 输出异常（{} 字节）", m.len())),
+        Err(e) => Err(format!("PDF 未生成：{e}")),
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -176,5 +239,23 @@ mod tests {
         assert!(resolve_under(&root, "../evil.txt").is_err());
         assert!(resolve_under(&root, "a/../../evil.txt").is_err());
         assert!(resolve_under(&root, "C:/Windows/evil.txt").is_err());
+    }
+
+    #[test]
+    fn edge_prints_real_pdf_when_available() {
+        // 验收（PRD §10-7）：有 Edge 环境生成非空 PDF；无 Edge 环境自动跳过
+        if detect_edge().is_none() {
+            eprintln!("跳过：未安装 Edge");
+            return;
+        }
+        let root = std::env::temp_dir().join("zhivault-pdf-test");
+        std::fs::create_dir_all(&root).unwrap();
+        let html = "<h1>知藏 PDF 测试</h1><p>作者：橙茶星</p>".to_string();
+        let rel = print_pdf(root.to_str().unwrap().to_string(), "测试书".to_string(), html)
+            .expect("Edge 打印应成功");
+        let bytes = std::fs::read(root.join(&rel)).expect("pdf 文件");
+        assert!(bytes.len() > 500, "PDF 应非空（实际 {} 字节）", bytes.len());
+        assert_eq!(&bytes[0..4], b"%PDF", "应为 PDF 文件头");
+        let _ = std::fs::remove_dir_all(&root);
     }
 }

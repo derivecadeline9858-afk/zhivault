@@ -10,6 +10,7 @@
     "core:default",
     "sql:default",
     "dialog:default",
+    "notification:default",
     "core:webview:allow-create-webview-window"
   ]
 }

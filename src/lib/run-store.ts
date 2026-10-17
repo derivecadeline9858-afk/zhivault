@@ -7,6 +7,7 @@ import type { StoreLike } from '@/core/zhihu/collectors'
 import { BatchExecutor, type TaskState } from '@/core/task/executor'
 import type { Fetcher } from '@/core/zhihu/fetcher'
 import { parseZhihuUrl, type EntityType } from '@/core/zhihu/url-parser'
+import type { Notifier } from '@/lib/notify'
 
 const TYPE_LABELS: Record<EntityType, string> = {
   answer: '回答',
@@ -71,6 +72,7 @@ export class RunStore {
       fetcherFactory: (demo: boolean) => Fetcher
       session?: { dC0: string; cookie?: string }
       retention?: LogRetention
+      notifier?: Notifier
     },
   ) {}
 
@@ -153,6 +155,12 @@ export class RunStore {
       summary.status === 'done' ? 'INFO' : 'WARN',
       `运行结束：新增 ${summary.totals.created} / 更新 ${summary.totals.updated} / 未变 ${summary.totals.unchanged} / 失败 ${summary.totals.failed}`,
     )
+    // 监控命中系统通知（PRD §10-7）：有新增或更新即提示
+    if (summary.totals.created + summary.totals.updated > 0) {
+      await this.deps.notifier
+        ?.notify('知藏监控命中', `新增 ${summary.totals.created} · 更新 ${summary.totals.updated}`)
+        .catch(() => undefined)
+    }
     this.executor = null
     this.patch({ phase: 'idle', currentRate: getGlobalRateLimiter().getState().ratePerSecond })
   }

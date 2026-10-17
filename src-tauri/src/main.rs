@@ -34,6 +34,7 @@ fn main() {
             }
         }))
         .plugin(tauri_plugin_dialog::init())
+        .plugin(tauri_plugin_notification::init())
         .plugin(tauri_plugin_sql::Builder::default().build())
         .manage(AppState {
             data_dir: Mutex::new(data_dir),
@@ -48,7 +49,9 @@ fn main() {
             commands::credential_save,
             commands::credential_load,
             commands::credential_clear,
-            commands::guard_url
+            commands::guard_url,
+            commands::detect_edge,
+            commands::print_pdf
         ])
         .run(tauri::generate_context!())
         .expect("error while building tauri application");
