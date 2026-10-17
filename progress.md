@@ -9,7 +9,7 @@
 |---|---|---|---|
 | 0 | 脚手架与品牌 | ✅ 完成 | 四道门全绿；zip 3.24MB；启动 0.18s；品牌露出点 1-4 截图核对通过 |
 | 1 | 数据层 | ✅ 完成 | 四道门全绿；store 测试 34 新增全过（合计 51/51）；build 成功 |
-| 2 | 采集内核 | ⚪ 未开始 | |
+| 2 | 采集内核 | ✅ 完成 | 四道门全绿；fetch 测试 29 新增全过（合计 80/80）；build 成功 |
 | 3 | 采集器与执行器 | ⚪ 未开始 | |
 | 4 | 导出引擎 | ⚪ 未开始 | |
 | 5 | GUI（P0 页面） | ⚪ 未开始 | |
@@ -40,6 +40,15 @@
 - `cargo test` → 2/2 通过（tauri-plugin-sql 编入）
 - `pnpm tauri build` → 成功（release 53.65s，NSIS 3.62MiB，tauri-plugin-sql 编入）
 - 终态复跑：`pnpm test` 51/51、`tsc` 0 错误
+
+### 任务 2（2026-10-17）—— 采集内核
+
+- RED：`tests/fetch` 5 文件全败（模块不存在）→ 实现后 **29/29**
+- `pnpm test` 全量 → 14 文件 **80/80**（任务 0/1/2 累计）
+- `pnpm tsc` → 0 错误（修 evalFn 短路、constants 再导出、getState mock 缺 burst、unknown 断言四处）
+- `pnpm eslint` → 0 错误 1 warning（上游约定）
+- `cargo test` → 2/2（新增 `eval_in_webview` 命令编译通过）
+- `pnpm tauri build` → 成功（release 28.71s，NSIS 3.64MiB；capability ACL 编译期校验通过）
 
 ### 任务 0（2026-10-16）
 
@@ -78,3 +87,6 @@
 - **Ruling-14 实体行不存 content_hash**：比对读 content_revision 最新行 hash，保持 §7.3 通用字段纯粹。代价：每次 save 一次索引查询，可忽略。
 - **Ruling-15 plugin-sql v2.6 API**：实例查询方法为 `select`（`load` 是静态工厂）；`sqlite:` 绝对路径直传 Rust（相对路径才落到 App 目录）。运行时验证延至任务 5。代价：若绝对路径不被接受，需 Rust 侧补命令——已在本条留证。
 - **Ruling-16 better-sqlite3 白名单**：加入 `pnpm-workspace.yaml` onlyBuiltDependencies，13.0.3 预编译二进制直装可用（SQLite 3.53.4）。
+- **Ruling-17 签名 eval 走 Rust 命令**：`@tauri-apps/api` 2.x 未暴露 `WebviewWindow.eval`（全包无此 API）；决策：JS 侧创建隐藏窗口（`core:webview:allow-create-webview-window`），eval 经自建命令 `eval_in_webview(label, js)`（Rust `WebviewWindow::eval`），signature-bridge 窗口加入 capability windows 白名单。代价：多一次 IPC；签名脚本入口 `window.__zhivault_sign_entry__` 需在真实知乎页面校准（任务 3 联调/运行时）。
+- **Ruling-18 风控文案识别**：正则特征（风控/安全验证/系统检测异常/操作过于频繁），命中即 RISK_CONTROL + 退避 0.2 req/s（PRD §7.4-2）；429 同理。真实文案样例在联调期补充进测试。代价：误伤含这些词的正常正文概率低，且仅触发降速不阻断。
+- **Ruling-19 内核可注入边界**：传输层（生产 axios 适配）与签名桥均为构造注入；验收按 PRD 用 mock 签名桥覆盖限速/退避/缓存/错误码（29 用例）。axios 传输层属网络边界不做单测，联调期覆盖。

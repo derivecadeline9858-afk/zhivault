@@ -39,7 +39,8 @@ fn main() {
         })
         .invoke_handler(tauri::generate_handler![
             commands::get_app_info,
-            commands::get_data_dir
+            commands::get_data_dir,
+            commands::eval_in_webview
         ])
         .run(tauri::generate_context!())
         .expect("error while building tauri application");

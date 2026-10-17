@@ -1,7 +1,7 @@
 use std::path::{Path, PathBuf};
 
 use serde::Serialize;
-use tauri::State;
+use tauri::{Manager, State};
 
 use crate::AppState;
 
@@ -30,6 +30,15 @@ pub fn get_app_info() -> AppInfo {
 pub fn get_data_dir(state: State<'_, AppState>) -> String {
     let guard = state.data_dir.lock().unwrap_or_else(|e| e.into_inner());
     guard.to_string_lossy().into_owned()
+}
+
+/// 在指定 webview 窗口中执行 JS（签名桥 eval 通道，PRD §7.4-1）
+#[tauri::command]
+pub async fn eval_in_webview(label: String, js: String, app: tauri::AppHandle) -> Result<(), String> {
+    let win = app
+        .get_webview_window(&label)
+        .ok_or_else(|| format!("webview 窗口不存在：{label}"))?;
+    win.eval(&js).map_err(|e| e.to_string())
 }
 
 #[cfg(test)]
