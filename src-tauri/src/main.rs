@@ -33,6 +33,7 @@ fn main() {
                 let _ = window.set_focus();
             }
         }))
+        .plugin(tauri_plugin_sql::Builder::default().build())
         .manage(AppState {
             data_dir: Mutex::new(data_dir),
         })
