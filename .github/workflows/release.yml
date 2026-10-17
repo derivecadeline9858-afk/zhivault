@@ -16,6 +16,8 @@ env:
 jobs:
   release:
     runs-on: windows-latest
+    permissions:
+      contents: write # softprops/action-gh-release 创建 Release 需写权限（默认只读会 403）
     steps:
       - uses: actions/checkout@v4
 
