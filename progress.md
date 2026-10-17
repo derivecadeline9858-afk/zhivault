@@ -16,7 +16,7 @@
 | 6 | 安全与合规 | ✅ 完成 | 四道门全绿（vitest 180/180 + cargo 10/10 + build + E2E 含协议门） |
 | 7 | PDF 与时间自定义 | ✅ 完成 | 四道门全绿（204/204 + cargo 11/11 含真实 Edge 打印 + build + E2E） |
 | 8 | 检索与阅读器 | ✅ 完成 | 门全绿：vitest 223/223（高亮/diff 快照/跨版本锚定/迁移 v3）；E2E 15s |
-| 9 | AI 中心 | ⚪ 未开始 | |
+| 9 | AI 中心 | ✅ 完成 | 四道门全绿（238/238 + cargo 11/11 + build + E2E 15.6s） |
 | 10 | 发布 | ⚪ 未开始 | |
 
 ## 环境基线（§9.1 自检）
@@ -40,6 +40,16 @@
 - `cargo test` → 2/2 通过（tauri-plugin-sql 编入）
 - `pnpm tauri build` → 成功（release 53.65s，NSIS 3.62MiB，tauri-plugin-sql 编入）
 - 终态复跑：`pnpm test` 51/51、`tsc` 0 错误
+
+### 任务 9（2026-10-17）—— AI 中心（P1）
+
+- OpenAI 兼容客户端：mock fetch 5 用例（成功解析+头断言/自定义端点/HTTP 错误/空响应/网络异常）
+- 摘要标签：5 用例（stripHtml/prompt 约束/```json 围栏解析/非 JSON 降级/全链路 mock）
+- Key 管理：DPAPI 独立文件 ai-key.bin（Rust 3 命令）；生命周期 3 用例；**Key 不入日志**——Authorization 头 + api_key=/ai_key= 键名双路径遮蔽（脱敏器扩展 `ai[-_]?key|openai[-_]?key`）
+- 迁移 v4 ai_job + 记录写回/枚举/按实体查（rowid 次序消除同毫秒并列）；用量统计聚合（含 null 容错）
+- AI 中心页：Key 配置（加密标识）/模型/端点/生成/记录表/用量卡/导出 JSON
+- 全量 `pnpm test` → 49 文件 **238/238**；tsc/eslint 0 错误；E2E 15.6s 通过；`pnpm tauri build` 成功（NSIS 15.92MiB）
+- 附：print_pdf 生产阈值与测试对齐（885B 实测揭示 1024 硬编码不一致，统一为 500）
 
 ### 任务 8（2026-10-17）—— 检索与阅读器（P1）
 
@@ -182,3 +192,6 @@
 - **Ruling-49 diff 语义**：块级 LCS（h1-6/p/li/ul/ol/blockquote/pre 切分），修改表现为相邻 del+add（并排视图左删右增）；快照测试锁定输出形状。
 - **Ruling-50 锚定文本坐标**：locateAnchor 返回纯文本坐标（去标签空间），UI 以段落级呈现；「精确」=前后指纹按序同现，「段落级降级」=仅前缀命中，全失配提示「内容已被大幅修改」（PRD §0-2 文案）。
 - **Ruling-51 变更报告数据源**：run_record（迁移 v3）+ content_revision.captured_at 区间查询——运行记录与变更清单天然一致（PRD §0 UI-1），无需采集器逐实体上报；「删除」计数口径：知乎删帖后本地留存（备份语义），运行计数里的 deleted 列暂不拆分（PRD §5.4 变更周报 N更新/M修改/K删除，K 需在线探测，列为后续）。
+- **Ruling-52 AI 端点 SSRF 放行**：§8-3 白名单（知乎+更新域）与 §5.1 自带 DeepSeek/OpenAI Key 存在张力；决策——用户在 AI 中心显式配置的 baseUrl 主机加入守卫放行（配置即授权，localStorage 持久化），TS 裁决兜底该主机，Rust guard_url 拒绝后二次比对。代价：白名单的"不可绕过"出现用户配置例外，属产品语义而非漏洞。
+- **Ruling-53 AI Key 独立密文文件**：ai-key.bin 与 credentials.bin 分离（不同生命周期：注销凭据不清 AI Key）；Rust 复用 credential::save/load/clear，三命令薄封装。
+- **Ruling-54 摘要输出容错**：模型未按 JSON 输出时降级为截断纯文本 + 空标签（不判失败，可用性优先）；JSON 解析剥 ```json 围栏；摘要硬上限 120 字、标签 ≤8。

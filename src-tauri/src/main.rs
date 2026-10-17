@@ -49,6 +49,9 @@ fn main() {
             commands::credential_save,
             commands::credential_load,
             commands::credential_clear,
+            commands::ai_key_save,
+            commands::ai_key_load,
+            commands::ai_key_clear,
             commands::guard_url,
             commands::detect_edge,
             commands::print_pdf

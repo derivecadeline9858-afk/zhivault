@@ -1,8 +1,9 @@
-import { CircleUserRound, CalendarClock, Download, Gauge, House, History, Info, Library, Settings } from 'lucide-react'
+import { CircleUserRound, BrainCircuit, CalendarClock, Download, Gauge, House, History, Info, Library, Settings } from 'lucide-react'
 import { useEffect, useState } from 'react'
 import { NavLink, Route, Routes } from 'react-router-dom'
 import { LoginDialog } from '@/components/LoginDialog'
 import { AboutPage } from '@/pages/AboutPage'
+import { AiPage } from '@/pages/AiPage'
 import { ChangesPage } from '@/pages/ChangesPage'
 import { ExportPage } from '@/pages/ExportPage'
 import { LibraryPage } from '@/pages/LibraryPage'
@@ -19,6 +20,7 @@ const NAV_ITEMS = [
   { to: '/run', label: '运行', icon: Gauge },
   { to: '/library', label: '书架 / 检索', icon: Library },
   { to: '/changes', label: '变更报告', icon: History },
+  { to: '/ai', label: 'AI 中心', icon: BrainCircuit },
   { to: '/export', label: '导出中心', icon: Download },
   { to: '/monitor', label: '监控计划', icon: CalendarClock },
   { to: '/settings', label: '设置', icon: Settings },
@@ -74,6 +76,7 @@ export function AppShell() {
           <Route path="/library" element={<LibraryPage />} />
           <Route path="/reader/:type/:id" element={<ReaderPage />} />
           <Route path="/changes" element={<ChangesPage />} />
+          <Route path="/ai" element={<AiPage />} />
           <Route path="/export" element={<ExportPage />} />
           <Route path="/monitor" element={<MonitorPage />} />
           <Route path="/settings" element={<SettingsPage />} />

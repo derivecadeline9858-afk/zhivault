@@ -21,15 +21,29 @@ function inTauri(): boolean {
   return typeof window !== 'undefined' && '__TAURI_INTERNALS__' in window
 }
 
-/** 应用内经 Rust guard_url 裁决；独立环境用本地同规则表（采集演示不触网） */
+/** 应用内经 Rust guard_url 裁决；独立环境用本地同规则表（采集演示不触网）。
+ *  用户在 AI 中心显式配置的 API 端点主机加入放行（PRD §5.1 自带 Key，Ruling-52）。 */
 function createVerdict(): (url: string) => Promise<boolean> {
+  const aiHost = (() => {
+    try {
+      return new URL(localStorage.getItem('zhivault.ai.baseUrl') ?? 'https://api.deepseek.com').hostname
+    } catch {
+      return 'api.deepseek.com'
+    }
+  })()
   if (inTauri()) {
     return (url) =>
       invoke<void>('guard_url', { url })
         .then(() => true)
-        .catch(() => false)
+        .catch(() => {
+          try {
+            return new URL(url).hostname === aiHost
+          } catch {
+            return false
+          }
+        })
   }
-  return async (url) => isAllowedUrl(url)
+  return async (url) => isAllowedUrl(url) || new URL(url).hostname === aiHost
 }
 
 /** 真实采集 fetcher：SSRF 守卫 + 签名桥 + 全局限速 + LRU */

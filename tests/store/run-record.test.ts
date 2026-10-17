@@ -3,11 +3,11 @@ import { createTestStore } from './helpers'
 import { MIGRATIONS } from '@/core/store/migrator'
 
 describe('迁移 v3：run_record（变更报告数据源）', () => {
-  it('迁移链 v1→v2→v3 完整', async () => {
+  it('迁移链完整（v1→…→当前版本）', async () => {
     const store = await createTestStore()
     const rows = await store.listRunRecords()
     expect(rows).toEqual([])
-    expect(MIGRATIONS.map((m) => m.version)).toEqual([1, 2, 3])
+    expect(MIGRATIONS.map((m) => m.version)).toEqual([1, 2, 3, 4])
   })
 
   it('运行记录保存与倒序列举', async () => {

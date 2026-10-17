@@ -736,6 +736,69 @@ export class ContentStore {
     }))
   }
 
+  // ---------- AI 生成记录（迁移 v4） ----------
+
+  async saveAiJob(input: {
+    id: string
+    entityType: string
+    entityId: string
+    kind: 'summary' | 'tags' | string
+    model: string
+    promptTokens?: number | null
+    completionTokens?: number | null
+    result: unknown
+  }): Promise<void> {
+    await this.exec.run(
+      'INSERT INTO ai_job (id, entity_type, entity_id, kind, model, prompt_tokens, completion_tokens, result_json, created_at) VALUES (?,?,?,?,?,?,?,?,?)',
+      [
+        input.id,
+        input.entityType,
+        input.entityId,
+        input.kind,
+        input.model,
+        input.promptTokens ?? null,
+        input.completionTokens ?? null,
+        JSON.stringify(input.result),
+        nowIso(),
+      ],
+    )
+  }
+
+  async listAiJobs(limit = 100): Promise<
+    {
+      id: string
+      entityType: string
+      entityId: string
+      kind: string
+      model: string
+      promptTokens: number | null
+      completionTokens: number | null
+      result: unknown
+      createdAt: string
+    }[]
+  > {
+    const rows = await this.exec.all<Record<string, string | number | null>>(
+      'SELECT * FROM ai_job ORDER BY created_at DESC, rowid DESC LIMIT ?',
+      [limit],
+    )
+    return rows.map((r) => ({
+      id: String(r.id),
+      entityType: String(r.entity_type),
+      entityId: String(r.entity_id),
+      kind: String(r.kind),
+      model: String(r.model),
+      promptTokens: r.prompt_tokens == null ? null : Number(r.prompt_tokens),
+      completionTokens: r.completion_tokens == null ? null : Number(r.completion_tokens),
+      result: JSON.parse(String(r.result_json)) as unknown,
+      createdAt: String(r.created_at),
+    }))
+  }
+
+  async listAiJobsForEntity(entityType: string, entityId: string) {
+    const all = await this.listAiJobs(500)
+    return all.filter((j) => j.entityType === entityType && j.entityId === entityId)
+  }
+
   // ---------- FTS 检索 ----------
 
   async searchContent(

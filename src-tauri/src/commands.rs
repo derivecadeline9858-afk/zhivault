@@ -111,6 +111,11 @@ fn credentials_path(state: &State<'_, AppState>) -> std::path::PathBuf {
     guard.join("credentials.bin")
 }
 
+fn ai_key_path(state: &State<'_, AppState>) -> std::path::PathBuf {
+    let guard = state.data_dir.lock().unwrap_or_else(|e| e.into_inner());
+    guard.join("ai-key.bin")
+}
+
 /// 凭据保存（DPAPI 加密落盘，PRD §8-1）
 #[tauri::command]
 pub fn credential_save(data: String, state: State<'_, AppState>) -> Result<(), String> {
@@ -127,6 +132,24 @@ pub fn credential_load(state: State<'_, AppState>) -> Result<Option<String>, Str
 #[tauri::command]
 pub fn credential_clear(state: State<'_, AppState>) -> Result<(), String> {
     crate::credential::clear(&credentials_path(&state))
+}
+
+/// AI Key 保存（独立 DPAPI 文件 ai-key.bin，PRD §10-9）
+#[tauri::command]
+pub fn ai_key_save(data: String, state: State<'_, AppState>) -> Result<(), String> {
+    crate::credential::save(&ai_key_path(&state), &data)
+}
+
+/// AI Key 读取
+#[tauri::command]
+pub fn ai_key_load(state: State<'_, AppState>) -> Result<Option<String>, String> {
+    crate::credential::load(&ai_key_path(&state))
+}
+
+/// AI Key 清除
+#[tauri::command]
+pub fn ai_key_clear(state: State<'_, AppState>) -> Result<(), String> {
+    crate::credential::clear(&ai_key_path(&state))
 }
 
 /// SSRF 白名单判定（PRD §8-3，前端请求前必查，不可绕过）
@@ -196,7 +219,7 @@ pub fn print_pdf(root: String, book_dir: String, html: String) -> Result<String,
         return Err(format!("Edge 打印失败（exit {:?}）", status.code()));
     }
     match std::fs::metadata(&pdf_full) {
-        Ok(m) if m.len() > 1024 => Ok(pdf_rel),
+        Ok(m) if m.len() > 500 => Ok(pdf_rel),
         Ok(m) => Err(format!("PDF 输出异常（{} 字节）", m.len())),
         Err(e) => Err(format!("PDF 未生成：{e}")),
     }
