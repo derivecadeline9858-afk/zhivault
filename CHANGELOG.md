@@ -1,6 +1,10 @@
-# 知藏 ZhiVault v0.1.0 —— 更新日志
+# 知藏 ZhiVault —— 更新日志
 
 > 把知乎装进自己口袋 · 作者：橙茶星
+
+## v0.1.1（2026-10-18）
+
+- 构建/CI：发布流水线修复与验证（Ruling-56~60）——仓库链接闭环、runner registry 覆盖、pnpm allowBuilds 迁移、时区无关测试断言、Actions contents 写权限。无用户功能变更。
 
 ## v0.1.0（2026-10-17）—— 首发
 
