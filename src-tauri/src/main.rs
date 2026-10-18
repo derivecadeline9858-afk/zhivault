@@ -3,6 +3,7 @@
 
 mod commands;
 mod credential;
+mod db;
 mod network_guard;
 mod pdf_edge;
 
@@ -35,20 +36,27 @@ fn main() {
         }))
         .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_notification::init())
-        .plugin(tauri_plugin_sql::Builder::default().build())
         .manage(AppState {
             data_dir: Mutex::new(data_dir),
+        })
+        .manage(db::SqliteState {
+            conn: Mutex::new(None),
         })
         .invoke_handler(tauri::generate_handler![
             commands::get_app_info,
             commands::get_data_dir,
             commands::eval_in_webview,
+            commands::zhivault_proxy_result,
+            commands::create_zhihu_proxy_window,
+            commands::proxy_navigate,
+            commands::diag_log,
+            db::db_open,
+            db::db_run,
+            db::db_all,
+            db::db_get,
             commands::export_write_text,
             commands::export_write_binary,
             commands::open_path,
-            commands::credential_save,
-            commands::credential_load,
-            commands::credential_clear,
             commands::ai_key_save,
             commands::ai_key_load,
             commands::ai_key_clear,

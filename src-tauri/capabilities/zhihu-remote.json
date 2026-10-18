@@ -1,0 +1,11 @@
+{
+  "$schema": "../gen/schemas/desktop-schema.json",
+  "identifier": "zhihu-proxy-remote",
+  "description": "知乎代理窗口的远程域授权：仅 www.zhihu.com 且仅允许代理结果回传命令（Ruling-61/62，最小授权面）",
+  "local": false,
+  "remote": {
+    "urls": ["https://www.zhihu.com"]
+  },
+  "windows": ["zhihu-proxy"],
+  "permissions": ["allow-zhivault-proxy-result"]
+}

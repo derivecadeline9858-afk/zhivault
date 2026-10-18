@@ -1,0 +1,28 @@
+"$schema" = "../gen/schemas/desktop-schema.json"
+description = "本地主窗口自定义命令全量白名单（app ACL 引入后显式声明，避免默认拒绝）"
+
+[[permission]]
+identifier = "allow-app-commands"
+description = "允许主窗口调用全部应用自定义命令（本名单即攻击面审计清单）"
+commands.allow = [
+  "get_app_info",
+  "get_data_dir",
+  "eval_in_webview",
+  "zhivault_proxy_result",
+  "create_zhihu_proxy_window",
+  "proxy_navigate",
+  "diag_log",
+  "db_open",
+  "db_run",
+  "db_all",
+  "db_get",
+  "export_write_text",
+  "export_write_binary",
+  "open_path",
+  "ai_key_save",
+  "ai_key_load",
+  "ai_key_clear",
+  "guard_url",
+  "detect_edge",
+  "print_pdf",
+]

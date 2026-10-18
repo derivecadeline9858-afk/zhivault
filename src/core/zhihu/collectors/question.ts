@@ -1,5 +1,5 @@
 import { inTimeWindow, mapAnswerRecord, mapAuthor, mapQuestionRecord } from '../mappers'
-import { API_V4, applyImages, bump } from './shared'
+import { API_V4, applyImages, bump, fetchEntityList } from './shared'
 import type { CollectorFn } from './types'
 import { emptyStats } from './types'
 
@@ -11,7 +11,9 @@ export const collectQuestion: CollectorFn = async (deps, target, options = {}) =
   const id = target.id
   const { store, taskId } = deps
 
-  const metaRaw = (await deps.fetcher.fetchJson(`${API_V4}/questions/${id}`)) as Raw
+  const metaRaw = (await deps.fetcher.fetchJson(`${API_V4}/questions/${id}`, {
+    params: { include: 'detail' },
+  })) as Raw
   const author = mapAuthor(metaRaw.author)
   if (author) await store.saveAuthor(author)
   bump(stats, await store.saveQuestion(mapQuestionRecord(metaRaw)))
@@ -27,8 +29,10 @@ export const collectQuestion: CollectorFn = async (deps, target, options = {}) =
     }
     if (options.maxItems !== undefined && seen >= options.maxItems) break
 
-    const page = (await deps.fetcher.fetchJson(`${API_V4}/questions/${id}/answers`, {
-      params: { sort_by: sort, limit: 20, offset: seen },
+    const page = (await fetchEntityList(deps.fetcher, `${API_V4}/questions/${id}/answers`, {
+      sort_by: sort,
+      limit: 20,
+      offset: seen,
     })) as { data?: Raw[]; paging?: { is_end?: boolean } }
     const data = page.data ?? []
 

@@ -5,7 +5,7 @@ import type { LogRetention } from '@/core/security/log-retention'
 import { redactLog } from '@/core/security/log-redact'
 import type { StoreLike } from '@/core/zhihu/collectors'
 import { BatchExecutor, type TaskState } from '@/core/task/executor'
-import type { Fetcher } from '@/core/zhihu/fetcher'
+import type { Fetcher, ZhihuSession } from '@/core/zhihu/fetcher'
 import { parseZhihuUrl, type EntityType } from '@/core/zhihu/url-parser'
 import type { Notifier } from '@/lib/notify'
 
@@ -70,7 +70,7 @@ export class RunStore {
     private deps: {
       store: StoreLike
       fetcherFactory: (demo: boolean) => Fetcher
-      session?: { dC0: string; cookie?: string }
+      session?: ZhihuSession
       retention?: LogRetention
       notifier?: Notifier
       /** 运行结束回调（落 run_record 供变更报告页） */
@@ -162,7 +162,7 @@ export class RunStore {
     const executor = new BatchExecutor({
       fetcher: this.deps.fetcherFactory(this.state.demoMode),
       store: this.deps.store,
-      session: this.deps.session ?? { dC0: 'anonymous' },
+      session: this.deps.session ?? { loggedIn: false },
       maxConcurrency: 1,
       onTaskEvent: (s: TaskState) => this.onTaskEvent(s),
     })

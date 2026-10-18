@@ -2,14 +2,12 @@ import {
   INVALID_RESPONSE,
   RATE_LIMITED,
   RISK_CONTROL,
-  SIGNATURE_UNAVAILABLE,
   ZhiVaultError,
   classifyHttpError,
   isRiskControlText,
 } from './errors'
 import type { LruCache } from './lru-cache'
 import type { RateLimiter } from './rate-limiter'
-import type { SignatureBridge } from './signature'
 
 export interface TransportRequest {
   url: string
@@ -26,20 +24,13 @@ export interface TransportResponse {
 
 export type Transport = (req: TransportRequest) => Promise<TransportResponse>
 
-/** 真实浏览器 UA（PRD §8-8）；Referer 固定知乎源站 */
-export const ZHIHU_UA =
-  'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/130.0.0.0 Safari/537.36'
-export const ZHIHU_REFERER = 'https://www.zhihu.com/'
-
 export interface FetchKernelDeps {
-  bridge: SignatureBridge
   limiter: RateLimiter
   cache: LruCache<unknown>
   transport: Transport
 }
 
 export interface FetchJsonOptions {
-  dC0?: string
   method?: 'GET' | 'POST'
   body?: unknown
   params?: Record<string, string | number>
@@ -68,11 +59,12 @@ function withParams(url: string, params?: Record<string, string | number>): stri
 }
 
 /**
- * 采集内核（PRD §10-2）：缓存 → 限速 → 签名 → 仅 UA/Referer/x-zse-96 头发送 → 错误分类。
- * 无凭据默认头（PRD §10-2）；Cookie 等敏感头由上层会话显式注入传输层之外不做。
+ * 采集内核（PRD §10-2）：缓存 → 限速 → 传输 → 错误分类。
+ * 签名与 Cookie 由传输层自理（生产 = 知乎页面上下文代理，见 zhihu-proxy.ts）；
+ * 传输层实现必须保证请求串与签名串一致——该不变量封装在代理内部。
  */
 export function createFetchKernel(deps: FetchKernelDeps): FetchKernel {
-  const { bridge, limiter, cache, transport } = deps
+  const { limiter, cache, transport } = deps
 
   return {
     async fetchJson(url: string, opts: FetchJsonOptions = {}): Promise<unknown> {
@@ -84,34 +76,13 @@ export function createFetchKernel(deps: FetchKernelDeps): FetchKernel {
         if (hit !== undefined) return hit
       }
 
-      const dC0 = opts.dC0
-      if (!dC0) {
-        throw new ZhiVaultError(SIGNATURE_UNAVAILABLE, 'SIGNATURE_UNAVAILABLE：缺少 d_c0，无法签名', { url })
-      }
-
       await limiter.acquire()
-
-      let signature: string
-      try {
-        signature = await bridge.sign(url, dC0)
-      } catch (e) {
-        if (e instanceof ZhiVaultError) throw e
-        throw new ZhiVaultError(
-          SIGNATURE_UNAVAILABLE,
-          `SIGNATURE_UNAVAILABLE：签名失败（${(e as Error).message ?? String(e)}）`,
-          { url, cause: e },
-        )
-      }
 
       const finalUrl = withParams(url, opts.params)
       const res = await transport({
         url: finalUrl,
         method,
-        headers: {
-          'User-Agent': ZHIHU_UA,
-          Referer: ZHIHU_REFERER,
-          'x-zse-96': signature,
-        },
+        headers: {},
         body: opts.body === undefined ? undefined : JSON.stringify(opts.body),
       })
 

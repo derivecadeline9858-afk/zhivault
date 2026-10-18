@@ -121,7 +121,7 @@ describe('七类采集器 mock API 端到端（PRD §10-3）', () => {
       [/members\/tok\/articles/, [{ data: [], paging: { is_end: true } }]],
       [/members\/tok\/pins/, [{ data: [], paging: { is_end: true } }]],
     ])
-    const r = await collectUser({ fetcher, store, taskId: 't-u', session: { dC0: 'd' } }, { id: 'tok' }, { subMode: 'created' })
+    const r = await collectUser({ fetcher, store, taskId: 't-u', session: { loggedIn: false } }, { id: 'tok' }, { subMode: 'created' })
     expect(r.stats.created).toBe(2) // 回答 + 问题
     expect((await store.getAuthor('tok'))).toBeDefined()
   })
@@ -133,11 +133,11 @@ describe('七类采集器 mock API 端到端（PRD §10-3）', () => {
     }
     const anonymous = router([[/activities/, [actPage]]])
     await expect(
-      collectUser({ fetcher: anonymous, store, taskId: 't-u', session: { dC0: 'd' } }, { id: 'tok' }, { subMode: 'activities' }),
+      collectUser({ fetcher: anonymous, store, taskId: 't-u', session: { loggedIn: false } }, { id: 'tok' }, { subMode: 'activities' }),
     ).rejects.toMatchObject({ code: LOGIN_REQUIRED })
 
     const logged = router([[/activities/, [actPage]]])
-    const r = await collectUser({ fetcher: logged, store, taskId: 't-u', session: { dC0: 'd', cookie: 'z_c0=xxx' } }, { id: 'tok' }, { subMode: 'activities' })
+    const r = await collectUser({ fetcher: logged, store, taskId: 't-u', session: { loggedIn: true } }, { id: 'tok' }, { subMode: 'activities' })
     expect(r.stats.created).toBeGreaterThanOrEqual(2) // activity + 目标回答(+问题+作者)
     expect((await store.getActivity('act1'))?.activityType).toBe('member_voteup_answer')
     expect(await store.getCaptureMeta('t-u', 'user.tok.activities.after_id')).toBe('1700000100')

@@ -31,6 +31,18 @@
 
 （每任务：验收命令 → 输出摘要 → 时间）
 
+### 调试 v0.1.1「用不了」+ 扫码登录（2026-10-18，真实环境全链路验收）
+
+- **根因定位**（代码+线上证据）：真实请求链四层断裂——①签名桥 eval 的 `__zhivault_sign_entry__` 从未存在（grep 全库无注入点）②kernel 从不发 Cookie 头 ③签名输入与实际请求串不一致 ④缺 x-zse-93；匿名 d_c0 为 'anonymous' 占位。测试全绿因 238 测试全走 mock/demo，真实网络路径从未集成验证
+- **修复架构（Ruling-61/62）**：Rust 创建隐藏 WebviewWindow 加载 www.zhihu.com，document-start 主世界运行器（WebView2 ExecuteScript 为隔离世界，直接 eval 访问不到页面全局——两代签名桥失败的共同根因）+ data-zv-job 属性派单 + `__TAURI_INTERNALS__.invoke` 回传（Rust `zhivault_proxy_result` 转主窗口事件）
+- **签名配方**：运行时互操作知乎 webpack 模块（93823 头名/1514 加密器/18543 变换/62845 前缀/10261 md5），`source=[x-zse-93, mR(url), d_c0, (body), x-zst-81].join('+')`，`x-zse-96="2.0_"+AES(md5(source))`；浏览器实测 200 校准
+- **反爬对抗（40362 概率风控）**：UA 覆写 Chrome/155 + 隐藏 window.chrome.webview + 复刻自家请求头（x-requested-with/x-zst-81，x-zst-81 静态常量参与签名）+ 带退避重试 4 次。**匿名采集受知乎概率性风控，登录后稳定**（实测：匿名 FORBIDDEN 403 → 登录后同任务新增 3/失败 0）
+- **扫码登录实测**：QR 渲染 ✓ → 真机扫码确认 ✓ → 会话 WebView2 profile 持久化（重启后仍"已登录"，/api/v4/me 返回真实用户）✓
+- **数据层修复（Ruling-63）**：tauri-plugin-sql 2.6 在 release 构建 `execute` 永久挂起（plugins-workspace#1386 同类：建空库文件后 CREATE TABLE 永不返回，dev 正常）→ 替换为 rusqlite(bundled) 壳内命令组（db_open/db_run/db_all/db_get），TS SqlExecutor 接口不变；实测 27 表迁移落库，回答正文入库、FTS 索引有内容
+- **字段校准（Ruling-64）**：知乎 v4 列表默认不返回正文 → 问题 meta 加 `include=detail`，回答/用户创作列表自适应 include（content → data[*].content → 降级）；收藏夹/专栏 items 嵌套结构列为后续校准项
+- **门禁终态**：vitest 49 文件全过 / tsc 0 / eslint 0 错误 1 上游 warning / cargo test 13/13 / E2E 1 passed / tauri build 成功（NSIS 15.99MiB <30MB）
+- 终验截图链：登录弹层 QR → 已登录 → 运行页计数（新增 3）→ 便携库行数（question 1/answer 2/author 2）→ 检索界面连真实库
+
 ### 任务 1（2026-10-17）—— 数据层
 
 - `pnpm vitest run tests/store`（先写后实现）→ RED：5 文件全败（模块不存在），确认失败原因正确
@@ -211,3 +223,7 @@
 - **Ruling-58 allowBuilds 迁移**：CI 两次"安装依赖"失败（#1 1m17s / #2 38s，均 ERR_PNPM_IGNORED_BUILDS: esbuild 致命退出）根因——pnpm 11 将 `onlyBuiltDependencies`（数组）迁移为 `allowBuilds`（对象，值为布尔），旧键名在新版被静默忽略，白名单形同虚设；本机警告不致命、CI 环境致命放大了差异。修复：`pnpm-workspace.yaml` 改 `allowBuilds: {esbuild: true, better-sqlite3: true}`，本地 CI=true + 干净目录 npx pnpm@11 双重验证警告消失。附带对齐：CI PNPM_VERSION 10→11、`npm_config_registry` 覆盖 npmjs（npmmirror 对海外 runner 不稳，lockfile 未锁 tarball 可安全换源）。
 - **Ruling-59 时区无关测试**：release #3 质量门挂于 `scheduler.test.ts` on_start 用例——本地时钟/断言用本地时间、lastRunAt 用 ISO-Z，UTC runner 上 `getHours()` 断言必败。修复：该用例全部改 ISO-Z 显式时刻并断言 `toISOString()`；本地 + TZ=UTC 双环境 16/16 过，全量 238/238 复绿。原 08/09 本地语义等价（UTC+8 下 00/01Z = 08/09 本地）。
 - **Ruling-60 Actions 写权限**：release #4 全链路通过（安装 15s / 审计✓ / 质量门 49s / Tauri 构建 5m02s / zip 2s）但末步"创建 Release"403——公共仓库 GITHUB_TOKEN 默认只读，`softprops/action-gh-release` 需 `contents: write`。修复：`release.yml` job 级加 `permissions: contents: write`。产物 zip 已先行上传为 workflow artifact，Release 步为唯一缺口。
+- **Ruling-61 知乎页面上下文代理（替代签名桥）**：v0.1.1 真实链路的四层断裂（签名入口虚构/无 Cookie/签名串错位/缺 x-zse-93）使所有真实采集必然失败。修复 = Rust 创建隐藏 WebviewWindow 加载 www.zhihu.com + document-start 主世界运行器 + data-zv-job 属性派单 + `__TAURI_INTERNALS__.invoke('zhivault_proxy_result')` 经 Rust 转主窗口事件回传。三个关键技术事实（均实测）：WebView2 ExecuteScript 运行在隔离世界（访问不到页面 JS 全局与 __TAURI_INTERNALS__，直接 eval 方案两代失败的主因）；Tauri v2 远程域 IPC 需 capability `"local": false, "remote": {"urls": [...]}`（字段是 local/remote，无 context 字段——写错即静默失效）+ 应用 permissions/*.toml 声明 allow-命令（app ACL 清单存在后自定义命令默认拒绝，须显式白名单）；WebviewWindow 生命周期事件是 tauri://created/error（tauri://loaded 不存在）。签名经运行时互操作知乎 webpack 模块（零知乎 JS 入库，PRD §9.5 不破）。会话态由 WebView2 profile 持久化（偏离 Ruling-35/PRD §8-1 的 DPAPI Cookie 模型：Chromium 落盘加密等效 DPAPI 目标；粘贴 Cookie 入口由扫码登录取代——原入口从未真正工作）。
+- **Ruling-62 知乎反爬（40362）对抗与匿名风控边界**：WAF 对 WebView2 匿名会话概率性 40362（"请求存在异常"）；有效手段 = UA 覆写 Chrome（与 WebView2 Runtime 同版本号）+ 隐藏 window.chrome.webview（document-start 时机，Tauri IPC 已先捕获引用不受影响）+ 复刻自家请求头（x-requested-with: fetch；x-zst-81 为静态客户端常量且必须同值参与签名源串）+ 运行器内退避重试（4 次）。匿名仍可能失败 → 产品语义调整为**登录后稳定采集**（实测匿名 403 登录后同任务成功）；x-zst-81 随知乎客户端版本轮换，轮换后按"捕获自家请求头"流程重新校准（运行器保留 XHR/fetch 头捕获通道）。
+- **Ruling-63 数据层去 plugin-sql**：tauri-plugin-sql 2.6.0 在 release 构建 `db.execute()` 永久挂起（空库文件、CREATE 无返回、无异常，plugins-workspace#1386 同症状），dev 正常而 release 挂 → Ruling-15 的"运行时验证延至任务 5"欠账在真实验收中暴露。修复 = 移除插件，壳内 rusqlite 0.40(bundled) 三命令（db_open/db_run/db_all/db_get，参数 JSON→ToSql 动态绑定，行→JSON Map），TS SqlExecutor 生产实现换成 IPC 适配（接口不变，测试仍 better-sqlite3 :memory:）。教训：跨语言插件的运行时行为差异必须真实构建验证，mock 链路覆盖不了。
+- **Ruling-64 v4 include 字段校准**：知乎 v4 列表默认不返正文——问题 meta 需 `include=detail`；回答/用户创作列表 include 语法端点相关（content 或 data[*].content），`fetchEntityList` 按首条响应探测锁定、无正文则降级。收藏夹/专栏 items 为嵌套结构（entry.content 为实体对象），不适用该探测，列为后续真实校准项（Ruling-25 mock 契约欠账的逐端点清偿）。

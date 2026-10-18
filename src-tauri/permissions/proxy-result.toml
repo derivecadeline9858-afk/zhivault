@@ -1,0 +1,7 @@
+"$schema" = "../gen/schemas/desktop-schema.json"
+description = "知乎代理回传命令权限（供 remote capability 引用）"
+
+[[permission]]
+identifier = "allow-zhivault-proxy-result"
+description = "允许 zhihu-proxy 窗口内的知乎页面回传代理结果（仅此一条自定义命令，最小授权面）"
+commands.allow = ["zhivault_proxy_result"]

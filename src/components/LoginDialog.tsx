@@ -3,6 +3,7 @@ import { Button } from '@/components/ui/button'
 import { sessionStore } from '@/lib/app-store'
 import type { EntityType } from '@/core/zhihu/url-parser'
 import { requiredLoginLevel } from '@/core/zhihu/visibility'
+import { QrLoginSection } from '@/components/QrLoginSection'
 
 const TYPE_LABELS: [EntityType, string][] = [
   ['answer', '回答'],
@@ -15,12 +16,7 @@ const TYPE_LABELS: [EntityType, string][] = [
 ]
 
 export function LoginDialog({ onClose }: { onClose: () => void }) {
-  const [cookie, setCookie] = useState('')
   const [confirming, setConfirming] = useState(false)
-
-  const save = () => {
-    void sessionStore.login(cookie).then(onClose)
-  }
 
   const logout = () => {
     void sessionStore.logout().then(() => {
@@ -58,28 +54,23 @@ export function LoginDialog({ onClose }: { onClose: () => void }) {
             </ul>
           </section>
           <section className="rounded-lg border border-border p-4">
-            <h3 className="mb-2 font-medium">登录采集</h3>
-            <p className="mb-3 text-xs text-muted-foreground">
-              粘贴知乎 Cookie（开发者工具 → 网络 → 请求头）。凭据本机加密存储（任务 6 接入 DPAPI），当前版本仅保存在内存，关闭应用即清除。
-            </p>
-            <textarea
-              id="cookie-input"
-              value={cookie}
-              onChange={(e) => setCookie(e.target.value)}
-              rows={4}
-              placeholder="z_c0=…; d_c0=…"
-              className="w-full rounded border border-input bg-background px-3 py-2 font-mono text-xs outline-none focus:ring-1 focus:ring-ring"
-            />
-            <Button className="mt-3 w-full" disabled={!cookie.trim()} onClick={save}>
-              保存并启用登录态
-            </Button>
+            <h3 className="mb-2 font-medium">登录采集（扫码登录）</h3>
+            {sessionStore.loggedIn ? (
+              <p className="py-8 text-center text-sm text-muted-foreground">
+                当前已登录知乎
+                <br />
+                如需更换账号，请先注销后再扫码。
+              </p>
+            ) : (
+              <QrLoginSection onClose={onClose} />
+            )}
           </section>
         </div>
         <div className="mt-4 flex items-center justify-between border-t border-border pt-4">
           {sessionStore.loggedIn ? (
             confirming ? (
               <div className="flex items-center gap-2">
-                <span className="text-sm text-destructive">确认清除凭据并恢复匿名？（将删除本机加密凭据文件）</span>
+                <span className="text-sm text-destructive">确认注销？将清除本机登录态</span>
                 <Button size="sm" variant="destructive" onClick={logout}>
                   确认注销
                 </Button>
@@ -93,7 +84,7 @@ export function LoginDialog({ onClose }: { onClose: () => void }) {
               </Button>
             )
           ) : (
-            <span className="text-xs text-muted-foreground">当前：匿名（凭据经 DPAPI 加密保存，注销即删除）</span>
+            <span className="text-xs text-muted-foreground">当前：匿名（公开内容可直接采集）</span>
           )}
           <Button variant="ghost" onClick={onClose}>
             关闭

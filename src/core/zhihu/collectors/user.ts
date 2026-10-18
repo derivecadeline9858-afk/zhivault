@@ -3,7 +3,7 @@ import { LOGIN_REQUIRED } from '../errors'
 import { isLoggedIn } from '../fetcher'
 import { mapActivityRecord, mapAnswerRecord, mapArticleRecord, mapAuthor, mapPinRecord, mapQuestionRecord } from '../mappers'
 import { canCapture } from '../visibility'
-import { API_V4, applyImages, bump } from './shared'
+import { API_V4, applyImages, bump, fetchEntityList } from './shared'
 import type { CollectorFn } from './types'
 import { emptyStats } from './types'
 
@@ -59,8 +59,9 @@ export const collectUser: CollectorFn = async (deps, target, options = {}) => {
           await store.saveCaptureMeta(taskId, cursorKey, String(seen))
           return { stats, status: 'paused', cursor: String(seen) }
         }
-        const page = (await deps.fetcher.fetchJson(`${API_V4}/members/${target.id}/${list}`, {
-          params: { limit: 20, offset: seen },
+        const page = (await fetchEntityList(deps.fetcher, `${API_V4}/members/${target.id}/${list}`, {
+          limit: 20,
+          offset: seen,
         })) as Page
         const data = page.data ?? []
         if (data.length === 0) break

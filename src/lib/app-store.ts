@@ -3,14 +3,12 @@ import { invoke } from '@tauri-apps/api/core'
 import { createFetchKernel } from '@/core/fetch/kernel'
 import { LruCache } from '@/core/fetch/lru-cache'
 import { getGlobalRateLimiter } from '@/core/fetch/rate-limiter'
-import { WebviewSignatureBridge } from '@/core/fetch/signature'
-import { createAxiosTransport } from '@/core/fetch/transport-axios'
 import { createGuardedTransport, isAllowedUrl } from '@/core/fetch/url-guard'
+import { createZhihuProxyTransport, ZhihuProxy } from '@/core/fetch/zhihu-proxy'
 import type { Fetcher } from '@/core/zhihu/fetcher'
 import { LogRetention } from '@/core/security/log-retention'
 import { Scheduler, type ScheduleSpec } from '@/core/task/scheduler'
 import { BrowserDemoStore } from './browser-demo-store'
-import { createTauriCredentialBridge, createMemoryCredentialBridge } from './credential-bridge'
 import { createDemoFetcher } from './demo-fixtures'
 import { getDb } from './db'
 import { createNullNotifier, createTauriNotifier } from './notify'
@@ -46,30 +44,32 @@ function createVerdict(): (url: string) => Promise<boolean> {
   return async (url) => isAllowedUrl(url) || new URL(url).hostname === aiHost
 }
 
-/** 真实采集 fetcher：SSRF 守卫 + 签名桥 + 全局限速 + LRU */
-function createRealFetcher(): Fetcher {
-  const transport = createGuardedTransport(createAxiosTransport(), createVerdict())
+/** 真实采集 fetcher：SSRF 守卫 + 知乎页面上下文代理（签名/Cookie 由页面自理）+ 全局限速 + LRU */
+function createRealFetcher(proxy: ZhihuProxy): Fetcher {
+  const transport = createGuardedTransport(createZhihuProxyTransport(proxy), createVerdict())
   const kernel = createFetchKernel({
-    bridge: new WebviewSignatureBridge(),
     limiter: getGlobalRateLimiter(),
     cache: new LruCache({ capacity: 500 }),
     transport,
   })
   return {
-    fetchJson: (url, opts) => kernel.fetchJson(url, { ...opts, dC0: sessionStore.dC0 }),
+    fetchJson: (url, opts) => kernel.fetchJson(url, opts),
   }
 }
 
-export const sessionStore = new SessionStore(
-  inTauri() ? createTauriCredentialBridge() : createMemoryCredentialBridge(),
-)
+export const zhihuProxy = new ZhihuProxy()
+
+export const sessionStore = new SessionStore({
+  probe: () => zhihuProxy.probeLoggedIn(),
+  logout: () => zhihuProxy.logout(),
+})
 
 export const logRetention = new LogRetention()
 
 export const runStore = new RunStore({
   store: new BrowserDemoStore(),
-  fetcherFactory: (demo) => (demo ? createDemoFetcher() : createRealFetcher()),
-  session: { get dC0() { return sessionStore.dC0 }, get cookie() { return sessionStore.cookie ?? undefined } },
+  fetcherFactory: (demo) => (demo ? createDemoFetcher() : createRealFetcher(zhihuProxy)),
+  session: { get loggedIn() { return sessionStore.loggedIn } },
   retention: logRetention,
   notifier: inTauri() ? createTauriNotifier() : createNullNotifier(),
 })

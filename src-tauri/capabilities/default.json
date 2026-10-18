@@ -4,13 +4,13 @@
   "description": "enables the default permissions",
   "windows": [
     "main",
-    "signature-bridge"
+    "zhihu-proxy"
   ],
   "permissions": [
     "core:default",
-    "sql:default",
     "dialog:default",
     "notification:default",
-    "core:webview:allow-create-webview-window"
+    "core:webview:allow-create-webview-window",
+    "allow-app-commands"
   ]
 }

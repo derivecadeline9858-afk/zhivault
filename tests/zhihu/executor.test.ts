@@ -57,15 +57,14 @@ describe('多用户批量执行器（PRD §10-3：共享限速桶、断点续抓
       return { status: 200, headers: {}, body: JSON.stringify(mkAnswer(m![1])) }
     }
     const kernel = createFetchKernel({
-      bridge: { sign: async () => 'sig' },
       limiter,
       cache: new LruCache({ capacity: 100 }),
       transport,
     })
     const executor = new BatchExecutor({
-      fetcher: { fetchJson: (url, o) => kernel.fetchJson(url, { ...o, dC0: 'd' }) },
+      fetcher: { fetchJson: (url, o) => kernel.fetchJson(url, o) },
       store,
-      session: { dC0: 'd' },
+      session: { loggedIn: true },
       maxConcurrency: 3,
     })
     const runPromise = executor.run([
@@ -93,15 +92,14 @@ describe('多用户批量执行器（PRD §10-3：共享限速桶、断点续抓
       return { status: 200, headers: {}, body: JSON.stringify(mkAnswer(m![1])) }
     }
     const kernel = createFetchKernel({
-      bridge: { sign: async () => 'sig' },
       limiter,
       cache: new LruCache({ capacity: 100 }),
       transport,
     })
     const executor = new BatchExecutor({
-      fetcher: { fetchJson: (url, o) => kernel.fetchJson(url, { ...o, dC0: 'd' }) },
+      fetcher: { fetchJson: (url, o) => kernel.fetchJson(url, o) },
       store,
-      session: { dC0: 'd' },
+      session: { loggedIn: true },
     })
     const summary = await executor.run([
       { id: 't1', url: 'https://www.zhihu.com/question/q1/answer/a1' },
@@ -122,15 +120,14 @@ describe('多用户批量执行器（PRD §10-3：共享限速桶、断点续抓
       return { status: 200, headers: {}, body: JSON.stringify(mkAnswer(m![1])) }
     }
     const kernel = createFetchKernel({
-      bridge: { sign: async () => 'sig' },
       limiter,
       cache: new LruCache({ capacity: 100 }),
       transport,
     })
     const executor = new BatchExecutor({
-      fetcher: { fetchJson: (url, o) => kernel.fetchJson(url, { ...o, dC0: 'd' }) },
+      fetcher: { fetchJson: (url, o) => kernel.fetchJson(url, o) },
       store,
-      session: { dC0: 'd' },
+      session: { loggedIn: true },
     })
     executor.pause()
     const s1 = await executor.run([{ id: 't1', url: 'https://www.zhihu.com/question/q1/answer/a1' }])

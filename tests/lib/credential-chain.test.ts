@@ -1,47 +1,59 @@
-import { beforeEach, describe, expect, it, vi } from 'vitest'
+import { describe, expect, it, vi } from 'vitest'
 import { SessionStore } from '@/lib/session-store'
-import type { CredentialBridge } from '@/lib/credential-bridge'
 
-function fakeBridge(): CredentialBridge & { store: Map<string, string> } {
-  const store = new Map<string, string>()
+function fakeDeps(overrides: { probeResult?: boolean } = {}) {
   return {
-    store,
-    save: vi.fn(async (d: string) => void store.set('cred', d)),
-    load: vi.fn(async () => store.get('cred') ?? null),
-    clear: vi.fn(async () => void store.delete('cred')),
+    probe: vi.fn(async () => overrides.probeResult ?? false),
+    logout: vi.fn(async () => {}),
   }
 }
 
-describe('凭据生命周期（PRD §8-1：加密落盘 + 注销全链路）', () => {
-  let bridge: ReturnType<typeof fakeBridge>
-
-  beforeEach(() => {
-    bridge = fakeBridge()
-  })
-
-  it('登录写入桥接层并可恢复（内存仅会话副本）', async () => {
-    const s = new SessionStore(bridge)
-    await s.login('z_c0=2|1:aaa; d_c0=bbb')
-    expect(bridge.save).toHaveBeenCalledWith('z_c0=2|1:aaa; d_c0=bbb')
-    const s2 = new SessionStore(bridge)
-    await s2.hydrate()
-    expect(s2.loggedIn).toBe(true)
-    expect(s2.dC0).toBe('bbb')
-  })
-
-  it('注销全链路：清内存 + 清桥接 + d_c0 复位匿名', async () => {
-    const s = new SessionStore(bridge)
-    await s.login('z_c0=2|1:aaa; d_c0=bbb')
-    await s.logout()
-    expect(bridge.clear).toHaveBeenCalledTimes(1)
-    expect(s.loggedIn).toBe(false)
-    expect(s.dC0).toBe('anonymous')
-    expect(s.cookie).toBeNull()
-  })
-
-  it('无凭据时 hydrate 保持匿名', async () => {
-    const s = new SessionStore(bridge)
+describe('会话状态（Ruling-61：状态由知乎代理承载，本类只管布尔与订阅）', () => {
+  it('hydrate 探测已登录并通知订阅者', async () => {
+    const deps = fakeDeps({ probeResult: true })
+    const s = new SessionStore(deps)
+    const seen: boolean[] = []
+    s.subscribe(() => seen.push(s.loggedIn))
     await s.hydrate()
+    expect(deps.probe).toHaveBeenCalledTimes(1)
+    expect(s.loggedIn).toBe(true)
+    expect(seen).toEqual([true])
+  })
+
+  it('hydrate 探测失败按匿名处理', async () => {
+    const deps = {
+      probe: vi.fn(async () => {
+        throw new Error('窗口未就绪')
+      }),
+      logout: vi.fn(async () => {}),
+    }
+    const s = new SessionStore(deps)
+    await s.hydrate()
+    expect(s.loggedIn).toBe(false)
+  })
+
+  it('注销全链路：调用代理注销 + 本地复位 + 通知', async () => {
+    const deps = fakeDeps({ probeResult: true })
+    const s = new SessionStore(deps)
+    await s.hydrate()
+    const seen: boolean[] = []
+    s.subscribe(() => seen.push(s.loggedIn))
+    await s.logout()
+    expect(deps.logout).toHaveBeenCalledTimes(1)
+    expect(s.loggedIn).toBe(false)
+    expect(seen).toEqual([false])
+  })
+
+  it('注销即使代理失败也复位本地状态', async () => {
+    const deps = {
+      probe: vi.fn(async () => true),
+      logout: vi.fn(async () => {
+        throw new Error('网络失败')
+      }),
+    }
+    const s = new SessionStore(deps)
+    await s.hydrate()
+    await s.logout()
     expect(s.loggedIn).toBe(false)
   })
 })
