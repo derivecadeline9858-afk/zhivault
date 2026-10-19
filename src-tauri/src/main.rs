@@ -42,6 +42,13 @@ fn main() {
         .manage(db::SqliteState {
             conn: Mutex::new(None),
         })
+        // 主窗口关闭即退出全应用：隐藏的 zhihu-proxy 代理窗与单实例 siw 窗不计入
+        // Tauri"最后一窗"判定，缺此逻辑时关闭主窗口后进程滞留后台（用户可见缺陷）
+        .on_window_event(|window, event| {
+            if window.label() == "main" && matches!(event, tauri::WindowEvent::CloseRequested { .. }) {
+                window.app_handle().exit(0);
+            }
+        })
         .invoke_handler(tauri::generate_handler![
             commands::get_app_info,
             commands::get_data_dir,
